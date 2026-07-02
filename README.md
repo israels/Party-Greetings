@@ -1,46 +1,303 @@
-# Daniella's Bat Mitzvah Greetings 🎉
+# Greetings App 🎉
 
-A mobile-friendly web app for guests to record and share video or audio blessings and greetings for Daniella's bat mitzvah.
+A mobile-friendly web app for guests to record and upload video/audio blessings for an event, plus a family gallery to view, sort, download, and remove uploads.
 
-## Getting Started
+## Features
 
-This project uses Firebase for storage and hosting. Follow the setup instructions below.
+- Clear landing instructions and customizable blessing prompts
+- Video-first recording with audio-only option
+- Front camera default + flip camera button
+- Retake + preview before upload
+- Optional guest name + optional note
+- Live countdown and near-limit warning
+- Strict 90-second auto-stop (cost-aware default)
+- Realtime upload progress + completion message
+- "Record another blessing" flow for multiple submissions
+- Family gallery with password protection
+- Sort gallery by name or upload date
+- Download single upload
+- Download all uploads as `.zip`
+- Delete upload from gallery (Firestore record + Storage file)
 
-### Setup Instructions
+## Before You Start
 
-1. **Create a Firebase Project**
-   - Go to [firebase.google.com](https://firebase.google.com)
-   - Click "Get Started" and create a new project
+You'll need:
+- A Firebase project (free tier works)
+- Firebase CLI installed (`npm install -g firebase-tools`)
+- Configuration files (which you'll create from templates)
 
-2. **Enable Firebase Services**
-   - Enable **Firestore Database** (use test mode for initial setup)
-   - Enable **Firebase Storage**
-   - Enable **Firebase Hosting**
+## Setup
 
-3. **Configure the App**
-   - Copy your Firebase config from the project settings
-   - Update `firebase-config.js` with your config values
+### 1. Create a Firebase Project
 
-4. **Deploy**
-   - Install Firebase CLI: `npm install -g firebase-tools`
-   - Run `firebase init` and `firebase deploy`
+1. Go to [Firebase Console](https://firebase.google.com)
+2. Click **Create a project** or select existing one
+3. In **Project Settings**, enable:
+   - **Firestore Database** (start in test mode if testing locally)
+   - **Storage** (for media uploads)
+   - **Hosting** (to deploy the web app)
 
-### Features
+### 2. Set Up Configuration Files
 
-- **Guest Recording Page** (`index.html`) — Record video or audio blessings
-- **Family Gallery** (`gallery.html`) — View all submissions (password protected)
-- **Responsive Design** — Works on iPhone and Android
-- **5-minute Recording Limit** — Automatic time enforcement
-- **Firebase Integration** — Secure cloud storage and database
+#### Firebase Configuration (`firebase-config.js`)
 
-### Changing the Gallery Password
+1. In Firebase Console, go to **Project Settings** (⚙️ icon)
+2. Scroll to **Your apps** and select your web app (or create one)
+3. Copy your Firebase config object
+4. Create `firebase-config.js` in the project root:
+   ```javascript
+   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+   import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+   import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
-Edit `gallery.js` and update the `GALLERY_PASSWORD` constant.
+   const firebaseConfig = {
+     apiKey: "YOUR_API_KEY",
+     authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+     projectId: "YOUR_PROJECT_ID",
+     storageBucket: "YOUR_PROJECT_ID.appspot.com",
+     messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+     appId: "YOUR_APP_ID"
+   };
 
-### Browser Compatibility
+   const app = initializeApp(firebaseConfig);
+   const db = getFirestore(app);
+   const storage = getStorage(app);
 
-- Works on modern browsers (Chrome, Firefox, Safari)
-- Requires HTTPS for camera/mic access (Firebase Hosting provides this)
-- iOS Safari requires `playsinline` attribute on video elements
+   export { app, db, storage };
+   ```
+5. Replace `YOUR_*` placeholders with actual values from your Firebase project
+6. Also create `public/firebase-config.js` with the same content
 
-Enjoy the celebration! 🎊
+#### Event Configuration (`config.js`)
+
+1. Copy `config.example.js` to create `config.js`
+2. Edit the values:
+   ```javascript
+   export const config = {
+     guestName: "Guest of Honor",  // Change to guest name
+     eventDescription: "Record a short encouragement or memory for our guest of honor.",
+     blessingPrompts: [
+       "Share your favorite memory.",
+       "Offer one blessing or encouraging word for their future.",
+       "Say one thing you admire about who they are becoming."
+     ],
+     galleryPassword: "MySecurePassword123",  // Change to strong password!
+     firestoreCollection: "greetings"
+   };
+   ```
+3. Also create `public/config.js` with the same content
+
+**⚠️ IMPORTANT:** Both `firebase-config.js` and `config.js` are in `.gitignore` — never commit them to version control!
+
+### 3. Initialize Firebase in Your Project
+
+```bash
+firebase login
+firebase init
+```
+
+When prompted by `firebase init`, select:
+
+- **Which Firebase features do you want to set up for this directory?**
+  - ✅ Firestore Database
+  - ✅ Storage (emulator optional)
+  - ✅ Hosting
+
+- **What file should be used as your Firestore indexes?**
+  - Accept default: `firestore.indexes.json`
+
+- **What file should be used as your Firestore rules?**
+  - Accept default: `firestore.rules`
+
+- **What file should be used as your Cloud Storage rules?**
+  - Accept default: `storage.rules`
+
+- **What do you want to use as your public directory?**
+  - Enter: `public`
+
+- **Configure as a single-page app (rewrite all URLs to index.html)?**
+  - Select: `Yes`
+
+- **Set up automatic builds and deploys with GitHub?**
+  - Select: `No` (unless you want CI/CD)
+
+### 4. Firestore Collection Setup (One-Time)
+
+The app writes to a `greetings` Firestore collection with fields:
+- `guestName`
+- `guestMessage`
+- `mediaType` (`video` or `audio`)
+- `fileName`
+- `storagePath`
+- `downloadURL`
+- `durationSeconds`
+- `createdAtMs`
+- `createdAt` (server timestamp)
+
+The collection is auto-created on first upload, but you can pre-create it in Firebase Console if preferred.
+
+### 5. Deploy to Firebase Hosting
+
+```bash
+firebase deploy
+```
+
+Your app will be live at: `https://YOUR_PROJECT_ID.web.app`
+
+---
+
+## Security Notes
+
+### Test vs. Production
+
+**For testing/events:**
+- Firestore: Start in **test mode** (anyone can read/write) for initial testing
+- After event: Lock down rules if you want to prevent new uploads
+
+**For production:**
+- Consider time-limited test mode or more restrictive security rules
+- Password gate on gallery is client-side only — add Firebase Auth if you need stronger security
+
+### Password Protection
+
+The gallery uses a **client-side password gate** (not secure authentication). It's sufficient for family/friends but not for sensitive data. For stronger security, integrate Firebase Authentication.
+
+---
+
+## File Structure
+
+```
+public/
+  ├── index.html              # Guest recording page
+  ├── gallery.html            # Family gallery page
+  ├── app.js                  # Recording logic
+  ├── gallery.js              # Gallery management
+  ├── firebase-config.js      # (GITIGNORED) Firebase credentials
+  ├── config.js               # (GITIGNORED) Event config
+  ├── config-loader.js        # Loads config dynamically
+  └── style.css               # Styling
+config.example.js             # Template for config.js
+firebase-config.example.js    # Template for firebase-config.js
+firebase.json                 # Firebase project config
+firestore.rules               # Firestore security rules
+firestore.indexes.json        # Firestore indexes
+storage.rules                 # Cloud Storage rules
+README.md                      # This file
+```
+
+---
+
+## Cost Control Tips
+
+- Keep the 90-second recording cap
+- Prefer Wi-Fi for large upload/download activity
+- Archive/download files after the event, then optionally delete cloud copies
+- Use Firebase's free tier pricing calculator to estimate costs
+
+---
+
+## Post-Event: Archive & Cleanup
+
+### ⚠️ Storage Access Note
+
+**Firebase Storage buckets don't appear by default in Google Cloud Console.** To access your bucket in Cloud Storage, you must search by name (`YOUR_PROJECT_ID.appspot.com`) rather than browsing the list. This is expected behavior.
+
+### Download All Files
+
+Use the family gallery to download individual media files via the modal download button (bulk ZIP download is not available due to file size limitations).
+
+### Optional: Export from Cloud Storage
+
+If you want a complete backup:
+
+```bash
+# Install Google Cloud tools
+npm install -g @google-cloud/storage
+
+# Download all files
+gsutil -m cp -r gs://YOUR_STORAGE_BUCKET/greetings ./local-backup
+```
+
+Find `YOUR_STORAGE_BUCKET` in `firebase-config.js` (`storageBucket` field).
+
+### Delete Cloud Files (Optional)
+
+After backing up, delete from Firebase Console:
+1. Go to **Storage** in Firebase Console
+2. Select files in `greetings/` folder
+3. Delete them to reduce storage costs
+
+---
+
+## Customization
+
+### Change Guest Name
+
+Edit `config.js`:
+```javascript
+guestName: "Your Guest Name",
+```
+
+This automatically updates page titles, prompts, and gallery headings.
+
+### Change Gallery Password
+
+Edit `config.js`:
+```javascript
+galleryPassword: "YourStrongPassword",
+```
+
+### Change Blessing Prompts
+
+Edit `config.js`:
+```javascript
+blessingPrompts: [
+  "Your custom prompt 1",
+  "Your custom prompt 2",
+  "Your custom prompt 3"
+],
+```
+
+### Change Recording Limit
+
+Edit `public/app.js`:
+```javascript
+const MAX_SECONDS = 90;  // Change to desired limit
+```
+
+---
+
+## Browser Support
+
+- Modern Chrome, Safari, Firefox (mobile + desktop)
+- HTTPS required for camera/mic access
+- iOS Safari supported (`playsinline` used on video elements)
+
+---
+
+## Troubleshooting
+
+**"config.js not found"**
+- Create `config.js` from `config.example.js` and fill in values
+
+**"firebase-config.js not found"**
+- Create `firebase-config.js` from `firebase-config.example.js` with your Firebase credentials
+
+**Camera/microphone not working**
+- Check that app is served over HTTPS (Firebase Hosting does this automatically)
+- Verify browser permissions for camera/mic
+- Some browsers require user gesture to start recording
+
+**Upload fails**
+- Check Firebase Storage is enabled in your project
+- Verify Firestore rules allow writes (test mode allows all)
+- Check Storage rules (`storage.rules`) permit uploads
+
+---
+
+## Questions?
+
+See the Firebase documentation:
+- [Firestore Setup](https://firebase.google.com/docs/firestore/start)
+- [Cloud Storage Setup](https://firebase.google.com/docs/storage/web/start)
+- [Firebase Hosting](https://firebase.google.com/docs/hosting)
