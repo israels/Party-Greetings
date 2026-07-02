@@ -12,9 +12,11 @@ firebase-debug.*.log*
 
 # Firebase config (keep .firebaserc for team setup, but gitignore actual secrets)
 firebase-config.js
+public/firebase-config.js
 
 # Environment and config files with secrets
 config.js
+public/config.js
 .env
 .env.local
 

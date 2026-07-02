@@ -11,6 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Write runtime config files
+        env:
+          FIREBASE_CONFIG_JS: ${{ secrets.FIREBASE_CONFIG_JS }}
+          APP_CONFIG_JS: ${{ secrets.APP_CONFIG_JS }}
+        run: |
+          if [ -z "$FIREBASE_CONFIG_JS" ]; then
+            echo "Missing secret: FIREBASE_CONFIG_JS"
+            exit 1
+          fi
+          if [ -z "$APP_CONFIG_JS" ]; then
+            echo "Missing secret: APP_CONFIG_JS"
+            exit 1
+          fi
+          printf "%s" "$FIREBASE_CONFIG_JS" > public/firebase-config.js
+          printf "%s" "$APP_CONFIG_JS" > public/config.js
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
