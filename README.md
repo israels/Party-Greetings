@@ -198,9 +198,13 @@ README.md                      # This file
 
 ## Post-Event: Archive & Cleanup
 
+### ⚠️ Storage Access Note
+
+**Firebase Storage buckets don't appear by default in Google Cloud Console.** To access your bucket in Cloud Storage, you must search by name (`YOUR_PROJECT_ID.appspot.com`) rather than browsing the list. This is expected behavior.
+
 ### Download All Files
 
-Use the family gallery to **Download All (.zip)** to save a local backup.
+Use the family gallery to download individual media files via the modal download button (bulk ZIP download is not available due to file size limitations).
 
 ### Optional: Export from Cloud Storage
 
