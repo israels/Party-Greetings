@@ -15,6 +15,8 @@ jobs:
         env:
           FIREBASE_CONFIG_JS: ${{ secrets.FIREBASE_CONFIG_JS }}
           APP_CONFIG_JS: ${{ secrets.APP_CONFIG_JS }}
+          GUEST_OF_HONOR_PHOTO_B64: ${{ secrets.GUEST_OF_HONOR_PHOTO_B64 }}
+          GUEST_OF_HONOR_PHOTO_URL: ${{ secrets.GUEST_OF_HONOR_PHOTO_URL }}
         run: |
           if [ -z "$FIREBASE_CONFIG_JS" ]; then
             echo "Missing secret: FIREBASE_CONFIG_JS"
@@ -26,6 +28,16 @@ jobs:
           fi
           printf "%s" "$FIREBASE_CONFIG_JS" > public/firebase-config.js
           printf "%s" "$APP_CONFIG_JS" > public/config.js
+          mkdir -p public/local-media
+
+          if [ -n "$GUEST_OF_HONOR_PHOTO_B64" ]; then
+            printf "%s" "$GUEST_OF_HONOR_PHOTO_B64" | base64 --decode > public/local-media/guest-of-honor.jpg
+          elif [ -n "$GUEST_OF_HONOR_PHOTO_URL" ]; then
+            curl --fail --location --silent --show-error "$GUEST_OF_HONOR_PHOTO_URL" --output public/local-media/guest-of-honor.jpg
+          else
+            echo "Missing guest photo source. Set either GUEST_OF_HONOR_PHOTO_B64 or GUEST_OF_HONOR_PHOTO_URL."
+            exit 1
+          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
