@@ -13,21 +13,7 @@ import { deleteObject, ref } from "https://www.gstatic.com/firebasejs/10.12.4/fi
 // (set by config-loader.js)
 let GALLERY_PASSWORD = null;
 
-// Wait for config to be loaded
-document.addEventListener("DOMContentLoaded", () => {
-  if (!window.appConfig) {
-    setGalleryStatus("Configuration error: appConfig not loaded", true);
-    return;
-  }
-  GALLERY_PASSWORD = window.appConfig.galleryPassword;
-  if (!GALLERY_PASSWORD || GALLERY_PASSWORD === "CHANGE_ME_TO_A_STRONG_PASSWORD") {
-    setGalleryStatus(
-      "⚠️  Gallery password not configured. Check config.js.",
-      true
-    );
-  }
-});
-
+// Get DOM elements before setting up listeners
 const passwordGate = document.getElementById("passwordGate");
 const galleryPanel = document.getElementById("galleryPanel");
 const passwordForm = document.getElementById("passwordForm");
@@ -40,62 +26,85 @@ const downloadAllBtn = document.getElementById("downloadAllBtn");
 
 let entries = [];
 
-passwordForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const entered = galleryPasswordInput.value.trim();
-  if (entered !== GALLERY_PASSWORD) {
-    passwordStatus.textContent = "Incorrect password. Try again.";
-    passwordStatus.classList.add("error");
-    return;
-  }
-  passwordStatus.textContent = "";
-  passwordGate.classList.add("hidden");
-  galleryPanel.classList.remove("hidden");
-  initGalleryFeed();
-});
-
-sortBy.addEventListener("change", () => {
-  renderGallery();
-});
-
-downloadAllBtn.addEventListener("click", async () => {
-  if (!entries.length) {
-    setGalleryStatus("No files available to download.", true);
-    return;
-  }
-  if (!window.JSZip) {
-    setGalleryStatus("Zip library failed to load.", true);
-    return;
+// Wait for config and DOM to load before setting up listeners
+document.addEventListener("DOMContentLoaded", async () => {
+  // Wait for config to be available (set by config-loader.js)
+  let retries = 0;
+  while (!window.appConfig && retries < 100) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    retries++;
   }
 
-  setGalleryStatus("Preparing ZIP download...", false);
-  downloadAllBtn.disabled = true;
-  const zip = new window.JSZip();
-  let complete = 0;
+  if (!window.appConfig) {
+    setGalleryStatus("Configuration error: appConfig not loaded", true);
+    return;
+  }
+  GALLERY_PASSWORD = window.appConfig.galleryPassword;
+  if (!GALLERY_PASSWORD || GALLERY_PASSWORD === "CHANGE_ME_TO_A_STRONG_PASSWORD") {
+    setGalleryStatus(
+      "⚠️  Gallery password not configured. Check config.js.",
+      true
+    );
+  }
 
-  try {
-    for (const item of entries) {
-      const response = await fetch(item.downloadURL);
-      if (!response.ok) {
-        throw new Error(`Unable to fetch ${item.fileName || item.id}`);
-      }
-      const blob = await response.blob();
-      const fallbackExt = item.mediaType === "audio" ? "webm" : "webm";
-      const fileName = item.fileName || `${item.id}.${fallbackExt}`;
-      zip.file(fileName, blob);
-      complete += 1;
-      setGalleryStatus(`Preparing ZIP... ${complete}/${entries.length}`, false);
+  // Password listener needs GALLERY_PASSWORD to be set
+  passwordForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const entered = galleryPasswordInput.value.trim();
+    if (entered !== GALLERY_PASSWORD) {
+      passwordStatus.textContent = "Incorrect password. Try again.";
+      passwordStatus.classList.add("error");
+      return;
+    }
+    passwordStatus.textContent = "";
+    passwordGate.classList.add("hidden");
+    galleryPanel.classList.remove("hidden");
+    initGalleryFeed();
+  });
+
+  sortBy.addEventListener("change", () => {
+    renderGallery();
+  });
+
+  downloadAllBtn.addEventListener("click", async () => {
+    if (!entries.length) {
+      setGalleryStatus("No files available to download.", true);
+      return;
+    }
+    if (!window.JSZip) {
+      setGalleryStatus("Zip library failed to load.", true);
+      return;
     }
 
-    const zipBlob = await zip.generateAsync({ type: "blob" });
-    const guestSlug = slugify(window.appConfig?.guestName || "guest");
-    downloadBlob(zipBlob, `${guestSlug}-blessings-${Date.now()}.zip`);
-    setGalleryStatus("ZIP download is ready.", false, true);
-  } catch (error) {
-    setGalleryStatus(error.message || "Failed to prepare ZIP download.", true);
-  } finally {
-    downloadAllBtn.disabled = false;
-  }
+    setGalleryStatus("Preparing ZIP download...", false);
+    downloadAllBtn.disabled = true;
+    const zip = new window.JSZip();
+    let complete = 0;
+
+    try {
+      for (const item of entries) {
+        const response = await fetch(item.downloadURL);
+        if (!response.ok) {
+          throw new Error(`Unable to fetch ${item.fileName || item.id}`);
+        }
+        const blob = await response.blob();
+        const fallbackExt = item.mediaType === "audio" ? "webm" : "webm";
+        const fileName = item.fileName || `${item.id}.${fallbackExt}`;
+        zip.file(fileName, blob);
+        complete += 1;
+        setGalleryStatus(`Preparing ZIP... ${complete}/${entries.length}`, false);
+      }
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const guestSlug = slugify(window.appConfig?.guestName || "guest");
+      downloadBlob(zipBlob, `${guestSlug}-blessings-${Date.now()}.zip`);
+      setGalleryStatus("ZIP download is ready.", false, true);
+    } catch (error) {
+      setGalleryStatus(error.message || "Failed to prepare ZIP download.", true);
+    } finally {
+      downloadAllBtn.disabled = false;
+    }
+  });
 });
 
 function initGalleryFeed() {
