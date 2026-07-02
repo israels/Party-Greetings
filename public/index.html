@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Leave a Blessing 🎉</title>
+    <title>Send a Message 🎉</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,16 +14,16 @@
   </head>
   <body>
     <main class="page workflow-page">
-      <section class="workflow-shell">
-        <div class="workflow-progress" role="group" aria-label="Blessing progress">
+      <section class="workflow-shell" data-current-step="0">
+        <div class="workflow-progress" role="group" aria-label="Message progress">
           <div class="workflow-progress-head">
             <button id="progressBackBtn" class="progress-back-btn hidden" type="button" aria-label="Go back to step 1" title="Go back">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
-            <span class="workflow-progress-label">Blessing progress</span>
-            <span class="workflow-progress-step" id="workflowProgressStep">Step 1 of 3</span>
+            <span class="workflow-progress-label">Message progress</span>
+            <span class="workflow-progress-step" id="workflowProgressStep">Step 1 of 2</span>
           </div>
           <div
             class="workflow-progress-track"
@@ -31,7 +31,7 @@
             aria-valuemin="1"
             aria-valuemax="3"
             aria-valuenow="1"
-            aria-valuetext="Step 1 of 3"
+            aria-valuetext="Step 1 of 2"
             id="workflowProgressTrack"
           >
             <span class="workflow-progress-fill" id="workflowProgressFill"></span>
@@ -40,23 +40,33 @@
 
         <div class="workflow-content">
           <section class="card step-panel active" data-step-panel="0">
-            <p class="eyebrow">Step 1 of 3</p>
-            <h2 id="mainTitle">Leave a Blessing 🎉</h2>
+            <p class="eyebrow">Welcome</p>
+            <h2 id="mainTitle">Leave a Message 🎉</h2>
             <p class="lead" id="mainDescription">
-              Record a short memory or blessing. You can always submit another one.
+              Leave a short video note for the guest of honor. Your message will become part of a joyful keepsake.
             </p>
-            <p class="notice">
-              <strong>90-second max.</strong> Recording auto-stops at the limit and is shared after the event.
-            </p>
+            <figure class="guest-photo-frame" aria-label="Guest of honor photo placeholder">
+              <img
+                id="guestOfHonorPhoto"
+                class="guest-photo"
+                src="./local-media/guest-of-honor.jpg"
+                alt="Guest of honor portrait"
+                onerror="this.style.display='none'; this.parentElement.classList.add('is-empty');"
+              />
+              <figcaption class="guest-photo-caption">Guest of Honor</figcaption>
+            </figure>
             <ul class="prompt-list" id="promptList"></ul>
-            <div class="actions">
+            <div class="actions actions-centered">
               <button id="introNextBtn" class="btn btn-gold">Begin</button>
             </div>
           </section>
 
           <section class="card step-panel hidden" data-step-panel="1">
-            <p class="eyebrow">Step 2 of 3</p>
-            <h2>Record your blessing</h2>
+            <p class="eyebrow">Step 1 of 2</p>
+            <h2>Record your message</h2>
+            <p class="notice">
+              <strong>90-second max.</strong> Recording auto-stops at the limit.  You can send multiple messages if desired.
+            </p>
             <div class="mode-picker">
               <label><input type="radio" name="mode" value="video" checked /> Video (Preferred)</label>
               <label><input type="radio" name="mode" value="audio" /> Audio only</label>
@@ -68,7 +78,6 @@
                 <button id="enableMediaBtn" class="btn btn-gold">Enable Camera + Microphone</button>
               </div>
               <video id="liveVideo" autoplay playsinline muted></video>
-              <video id="playbackVideo" playsinline class="hidden"></video>
               <button id="flipCameraBtn" class="btn-flip-camera hidden" aria-label="Flip camera" title="Flip camera">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M1 4v6h6M23 20v-6h-6"/>
@@ -76,12 +85,6 @@
                 </svg>
               </button>
               <div id="videoControlsOverlay" class="video-controls-overlay hidden">
-                <button id="videoRetakeBtn" class="video-ctrl-btn is-retake hidden" type="button" aria-label="Record again" title="Record again">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M1 4v6h6" />
-                    <path d="M3.5 15a9 9 0 1 0 .5-3.8" />
-                  </svg>
-                </button>
                 <button id="videoStartBtn" class="video-ctrl-btn is-record hidden" type="button" aria-label="Start recording" title="Start recording">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <circle cx="12" cy="12" r="8" fill="#ff3b3b" />
@@ -92,14 +95,8 @@
                     <rect x="6" y="6" width="12" height="12" rx="2.5" fill="white" />
                   </svg>
                 </button>
-                <button id="videoPlayBtn" class="video-ctrl-btn is-play hidden" type="button" aria-label="Play recording" title="Play recording">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <polygon points="8,5 19,12 8,19" fill="white" />
-                  </svg>
-                </button>
               </div>
             </div>
-            <audio id="playbackAudio" controls class="hidden"></audio>
             <div class="timer-wrap">
               <span id="timerLabel"></span>
               <span id="timer" class="timer"></span>
@@ -108,41 +105,53 @@
               <button id="startBtn" class="btn btn-gold" disabled>Start</button>
               <button id="stopBtn" class="btn" disabled>Stop Recording</button>
             </div>
-            <div id="reviewSection" class="review-section hidden">
-              <h3 class="review-heading">Review &amp; Upload</h3>
-              <div class="actions" id="audioRetakeActions">
-                <button id="retakeBtn" class="btn btn-secondary">Record Again</button>
-              </div>
-              <form id="uploadForm">
-                <label for="guestName">Your name (optional)</label>
-                <input id="guestName" type="text" placeholder="Anonymous" />
-                <label for="guestMessage" id="guestMessageLabel">A note (optional)</label>
-                <textarea id="guestMessage" placeholder="Add a short note" rows="3"></textarea>
-                <div class="progress-wrap hidden" id="progressWrap">
-                  <progress id="uploadProgress" value="0" max="100"></progress>
-                  <span id="uploadProgressText">0%</span>
-                </div>
-                <div class="actions">
-                  <button id="uploadBtn" class="btn btn-gold" type="submit" disabled>Upload Blessing</button>
-                </div>
-              </form>
-            </div>
           </section>
 
           <section class="card step-panel hidden" data-step-panel="2">
+            <p class="eyebrow">Step 2 of 2</p>
+            <h2>Review your message (optional)</h2>
+            <p class="lead">If needed, review your recording, then continue to upload.</p>
+            <div class="video-wrap hidden" id="reviewVideoWrap">
+              <video id="playbackVideo" controls playsinline class="hidden"></video>
+            </div>
+            <audio id="playbackAudio" controls class="hidden"></audio>
+            <div class="actions" id="audioRetakeActions">
+              <button id="retakeBtn" class="btn btn-secondary" type="button">Record Again</button>
+              <button id="reviewNextBtn" class="btn btn-gold" type="button">Next: Upload</button>
+            </div>
+          </section>
+
+          <section class="card step-panel hidden" data-step-panel="3">
             <p class="eyebrow">Step 3 of 3</p>
+            <h2>Upload your message</h2>
+            <form id="uploadForm">
+              <label for="guestName">Your name (recommended)</label>
+              <input id="guestName" type="text" placeholder="Anonymous" />
+              <label for="guestMessage" id="guestMessageLabel">A note (optional)</label>
+              <textarea id="guestMessage" placeholder="Add a short note" rows="3"></textarea>
+              <div class="progress-wrap hidden" id="progressWrap">
+                <progress id="uploadProgress" value="0" max="100"></progress>
+                <span id="uploadProgressText">0%</span>
+              </div>
+              <div class="actions">
+                <button id="uploadBtn" class="btn btn-gold" type="submit" disabled>Upload Message</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card step-panel hidden" data-step-panel="4">
+            <p class="eyebrow">Complete</p>
             <h2>All set</h2>
             <div class="thank-you hidden" id="thankYou">
-              <p style="margin: 0">✨ <strong>Thank you!</strong> Your blessing has been uploaded.</p>
+              <p style="margin: 0">✨ <strong>Thank you!</strong> Your message has been saved.</p>
             </div>
-            <p class="lead">Your blessing is saved. Share another anytime.</p>
+            <p class="lead">Do you want to record another message?</p>
             <div class="actions">
-              <button id="recordAnotherBtn" class="btn btn-gold hidden">Record Another</button>
+              <button id="recordAnotherBtn" class="btn btn-gold hidden">Start Over</button>
             </div>
           </section>
         </div>
 
-        <p id="status" class="status workflow-status" role="status" aria-live="polite"></p>
       </section>
     </main>
 

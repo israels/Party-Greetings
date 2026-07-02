@@ -17,11 +17,11 @@ const progressBackBtn = document.getElementById("progressBackBtn");
 const liveVideo = document.getElementById("liveVideo");
 const playbackVideo = document.getElementById("playbackVideo");
 const playbackAudio = document.getElementById("playbackAudio");
+const reviewVideoWrap = document.getElementById("reviewVideoWrap");
 const videoControlsOverlay = document.getElementById("videoControlsOverlay");
 const videoStartBtn = document.getElementById("videoStartBtn");
 const videoStopBtn = document.getElementById("videoStopBtn");
-const videoPlayBtn = document.getElementById("videoPlayBtn");
-const videoRetakeBtn = document.getElementById("videoRetakeBtn");
+const reviewNextBtn = document.getElementById("reviewNextBtn");
 const audioModeActions = document.getElementById("audioModeActions");
 const audioRetakeActions = document.getElementById("audioRetakeActions");
 const timerLabel = document.getElementById("timerLabel");
@@ -39,14 +39,11 @@ const stepPanels = document.querySelectorAll("[data-step-panel]");
 const workflowProgressTrack = document.getElementById("workflowProgressTrack");
 const workflowProgressFill = document.getElementById("workflowProgressFill");
 const workflowProgressStep = document.getElementById("workflowProgressStep");
-const reviewSection = document.getElementById("reviewSection");
 const cameraOverlay = document.getElementById("cameraOverlay");
 const videoWrap = document.getElementById("videoWrap");
+const workflowShell = document.querySelector(".workflow-shell");
 
 const introNextBtn = document.getElementById("introNextBtn");
-
-const playSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><polygon points="8,5 19,12 8,19" fill="white" /></svg>';
-const pauseSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3" height="14" rx="1" fill="white" /><rect x="14" y="5" width="3" height="14" rx="1" fill="white" /></svg>';
 
 let mode = "video";
 let facingMode = "user";
@@ -62,6 +59,7 @@ let timerIntervalId = null;
 let autoStopId = null;
 let recordedDurationSeconds = 0;
 let currentStep = 0;
+let reviewReady = false;
 
 introNextBtn.addEventListener("click", () => {
   goToStep(1);
@@ -69,7 +67,7 @@ introNextBtn.addEventListener("click", () => {
 
 progressBackBtn.addEventListener("click", () => {
   if (isRecording) return;
-  goToStep(0);
+  goToStep(Math.max(0, currentStep - 1));
 });
 
 const modeInputs = document.querySelectorAll('input[name="mode"]');
@@ -79,8 +77,8 @@ modeInputs.forEach((input) => {
     mode = event.target.value;
     recordedBlob = null;
     recordedMediaType = null;
+    reviewReady = false;
     uploadBtn.disabled = true;
-    reviewSection.classList.add("hidden");
     progressWrap.classList.add("hidden");
     resetPreviewOnly();
     renderIdleTimer();
@@ -116,33 +114,9 @@ stopBtn.addEventListener("click", handleStopRecording);
 videoStopBtn.addEventListener("click", handleStopRecording);
 
 retakeBtn.addEventListener("click", handleRetake);
-videoRetakeBtn.addEventListener("click", handleRetake);
 
-videoPlayBtn.addEventListener("click", async () => {
-  if (!playbackVideo.src) {
-    return;
-  }
-  if (playbackVideo.paused) {
-    try {
-      await playbackVideo.play();
-      videoPlayBtn.innerHTML = pauseSvg;
-    } catch (error) {
-      setStatus("Unable to start playback right now.", true);
-    }
-  } else {
-    playbackVideo.pause();
-    videoPlayBtn.innerHTML = playSvg;
-  }
-});
-
-playbackVideo.addEventListener("ended", () => {
-  videoPlayBtn.innerHTML = playSvg;
-});
-
-playbackVideo.addEventListener("pause", () => {
-  if (!playbackVideo.ended) {
-    videoPlayBtn.innerHTML = playSvg;
-  }
+reviewNextBtn.addEventListener("click", () => {
+  goToStep(3);
 });
 
 recordAnotherBtn.addEventListener("click", async () => {
@@ -214,7 +188,7 @@ uploadForm.addEventListener("submit", async (event) => {
       recordAnotherBtn.classList.remove("hidden");
       uploadProgress.value = 100;
       uploadProgressText.textContent = "100%";
-      goToStep(2, { force: true });
+      goToStep(4, { force: true });
     }
   );
 });
@@ -248,8 +222,8 @@ async function handleRetake() {
   recordedBlob = null;
   recordedMediaType = null;
   recordedDurationSeconds = 0;
+  reviewReady = false;
   uploadBtn.disabled = true;
-  reviewSection.classList.add("hidden");
   progressWrap.classList.add("hidden");
   thankYou.classList.add("hidden");
   recordAnotherBtn.classList.add("hidden");
@@ -258,6 +232,7 @@ async function handleRetake() {
     await setupStream();
     renderIdleTimer();
     setStatus("Ready for a fresh take.", false);
+    goToStep(1, { force: true });
   } catch (error) {
     setStatus(normalizeError(error), true);
   }
@@ -267,8 +242,8 @@ async function retakeAndPrep() {
   recordedBlob = null;
   recordedMediaType = null;
   recordedDurationSeconds = 0;
+  reviewReady = false;
   uploadBtn.disabled = true;
-  reviewSection.classList.add("hidden");
   progressWrap.classList.add("hidden");
   uploadProgress.value = 0;
   uploadProgressText.textContent = "0%";
@@ -300,9 +275,9 @@ function startRecording() {
   chunks = [];
   recordingStartedAt = Date.now();
   isRecording = true;
+  reviewReady = false;
   uploadBtn.disabled = true;
   syncControlAvailability();
-  reviewSection.classList.add("hidden");
   thankYou.classList.add("hidden");
   recordAnotherBtn.classList.add("hidden");
 
@@ -334,9 +309,10 @@ function startRecording() {
     cleanupStream();
 
     renderPlayback(recordedBlob, recordedMediaType);
+    reviewReady = true;
     uploadBtn.disabled = false;
-    reviewSection.classList.remove("hidden");
-    setStatus("Review your blessing, then upload or retake.", false);
+    setStatus("Review your blessing, then continue to upload or retake.", false);
+    goToStep(2, { force: true });
   };
 
   mediaRecorder.start(1000);
@@ -350,16 +326,19 @@ function renderPlayback(blob, mediaType) {
   playbackAudio.classList.add("hidden");
 
   if (mediaType === "video") {
+    reviewVideoWrap.classList.remove("hidden");
     playbackVideo.src = playbackObjectUrl;
     playbackVideo.load();
     playbackVideo.currentTime = 0;
     playbackVideo.pause();
-    videoPlayBtn.innerHTML = playSvg;
     playbackVideo.classList.remove("hidden");
+    playbackAudio.classList.add("hidden");
   } else {
+    reviewVideoWrap.classList.add("hidden");
     playbackAudio.src = playbackObjectUrl;
     playbackAudio.load();
     playbackAudio.classList.remove("hidden");
+    playbackVideo.classList.add("hidden");
   }
 }
 
@@ -373,7 +352,7 @@ function resetPlaybackElements() {
   playbackAudio.load();
   playbackVideo.classList.add("hidden");
   playbackAudio.classList.add("hidden");
-  videoPlayBtn.innerHTML = playSvg;
+  reviewVideoWrap.classList.add("hidden");
   if (mode === "video") {
     liveVideo.classList.remove("hidden");
   }
@@ -389,6 +368,7 @@ function resetPreviewOnly() {
   playbackAudio.load();
   playbackVideo.classList.add("hidden");
   playbackAudio.classList.add("hidden");
+  reviewVideoWrap.classList.add("hidden");
 }
 
 function revokePlaybackObjectUrl() {
@@ -491,6 +471,9 @@ function audioConstraints() {
 }
 
 function setStatus(message, isError, isSuccess = false) {
+  if (!statusEl) {
+    return;
+  }
   statusEl.textContent = message;
   statusEl.classList.remove("error", "ok");
   if (isError) {
@@ -553,11 +536,12 @@ function ensureFirebaseReady() {
 }
 
 function goToStep(step, { force = false } = {}) {
-  const safeStep = Math.max(0, Math.min(2, step));
+  const safeStep = Math.max(0, Math.min(4, step));
   if (!force && !canAccessStep(safeStep)) {
     return;
   }
   currentStep = safeStep;
+  workflowShell.dataset.currentStep = String(safeStep);
   updateStepUI();
   if (safeStep === 1 && !stream) {
     attemptCameraSetup();
@@ -566,9 +550,12 @@ function goToStep(step, { force = false } = {}) {
 }
 
 function canAccessStep(step) {
+  if (step === 0) return true;
   if (step <= currentStep) return true;
   if (step === 1) return true;
-  if (step === 2) return !recordAnotherBtn.classList.contains("hidden");
+  if (step === 2) return !!recordedBlob;
+  if (step === 3) return !!recordedBlob && reviewReady;
+  if (step === 4) return !recordAnotherBtn.classList.contains("hidden");
   return false;
 }
 
@@ -580,13 +567,29 @@ function updateStepUI() {
     panel.classList.toggle("hidden", !isActive);
   });
 
-  const stepNumber = currentStep + 1;
-  const totalSteps = 3;
-  const progressPercent = (stepNumber / totalSteps) * 100;
+  let stepNumber = 0;
+  let totalSteps = 3;
+  let progressPercent = 0;
+
+  if (currentStep === 1) {
+    stepNumber = 1;
+    totalSteps = 2;
+    progressPercent = 50;
+  } else if (currentStep === 2) {
+    stepNumber = 2;
+    totalSteps = 2;
+    progressPercent = 100;
+  } else if (currentStep === 3 || currentStep === 4) {
+    stepNumber = 3;
+    totalSteps = 3;
+    progressPercent = 100;
+  }
+
   workflowProgressFill.style.width = `${progressPercent}%`;
-  workflowProgressTrack.setAttribute("aria-valuenow", String(stepNumber));
-  workflowProgressTrack.setAttribute("aria-valuetext", `Step ${stepNumber} of ${totalSteps}`);
-  workflowProgressStep.textContent = `Step ${stepNumber} of ${totalSteps}`;
+  workflowProgressTrack.setAttribute("aria-valuemax", String(totalSteps));
+  workflowProgressTrack.setAttribute("aria-valuenow", String(Math.max(1, stepNumber)));
+  workflowProgressTrack.setAttribute("aria-valuetext", `Step ${Math.max(1, stepNumber)} of ${totalSteps}`);
+  workflowProgressStep.textContent = `Step ${Math.max(1, stepNumber)} of ${totalSteps}`;
 
   syncControlAvailability();
 }
@@ -598,21 +601,20 @@ function syncControlAvailability() {
 
   cameraOverlay.classList.toggle("hidden", hasStream || hasReviewMedia);
   enableMediaBtn.textContent = isVideo ? "Enable Camera + Microphone" : "Enable Microphone";
-  videoWrap.classList.toggle("hidden", !isVideo && hasStream);
+  videoWrap.classList.toggle("hidden", !isVideo);
   flipCameraBtn.classList.toggle("hidden", !isVideo || !hasStream || hasReviewMedia);
   flipCameraBtn.disabled = isRecording;
 
-  videoControlsOverlay.classList.toggle("hidden", !isVideo || (!hasStream && !hasReviewMedia));
-  videoStartBtn.classList.toggle("hidden", !isVideo || !hasStream || isRecording || hasReviewMedia);
+  videoControlsOverlay.classList.toggle("hidden", !isVideo || !hasStream);
+  videoStartBtn.classList.toggle("hidden", !isVideo || !hasStream || isRecording);
   videoStopBtn.classList.toggle("hidden", !isVideo || !isRecording);
-  videoPlayBtn.classList.toggle("hidden", !isVideo || !hasReviewMedia);
-  videoRetakeBtn.classList.toggle("hidden", !isVideo || !hasReviewMedia);
   audioModeActions.classList.toggle("hidden", isVideo);
-  audioRetakeActions.classList.toggle("hidden", isVideo || !hasReviewMedia);
+  audioRetakeActions.classList.toggle("hidden", currentStep !== 2 || !hasReviewMedia);
 
   startBtn.disabled = !hasStream || isRecording;
   stopBtn.disabled = !isRecording;
-  progressBackBtn.classList.toggle("hidden", currentStep !== 1);
+  const showBack = !isRecording && currentStep > 0 && currentStep < 4;
+  progressBackBtn.classList.toggle("hidden", !showBack);
 }
 
 async function attemptCameraSetup() {

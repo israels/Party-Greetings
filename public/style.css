@@ -91,6 +91,11 @@ body::after {
   min-height: calc(100vh - 52px);
 }
 
+.workflow-shell[data-current-step="0"] .workflow-progress,
+.workflow-shell[data-current-step="4"] .workflow-progress {
+  display: none;
+}
+
 .workflow-progress {
   background: rgba(255, 255, 255, 0.6);
   border: 1.5px solid rgba(255, 107, 174, 0.35);
@@ -236,6 +241,57 @@ h2 {
 
 .prompt-list li::marker {
   color: var(--pink);
+}
+
+.actions-centered {
+  justify-content: center;
+}
+
+.guest-photo-frame {
+  margin: 14px auto 10px;
+  width: clamp(180px, 34vw, 260px);
+  max-height: 420px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 107, 174, 0.35);
+  background:
+    linear-gradient(145deg, rgba(255, 214, 236, 0.68), rgba(237, 233, 254, 0.7));
+  box-shadow: 0 10px 28px rgba(168, 85, 247, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.guest-photo {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  min-height: 260px;
+  max-height: 420px;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+.guest-photo-frame.is-empty::before {
+  content: "Add local image at public/local-media/guest-of-honor.jpg";
+  flex: 1;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  padding: 14px;
+}
+
+.guest-photo-caption {
+  margin: 0;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--pink-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 label {
@@ -404,32 +460,6 @@ audio {
 .small {
   font-size: 0.9rem;
   color: var(--ink-soft);
-}
-
-.status {
-  margin-top: 10px;
-  min-height: 1.2rem;
-  font-weight: 700;
-  font-size: 0.92rem;
-}
-
-.workflow-status {
-  margin: 0;
-  padding: 12px 16px;
-  border-radius: 16px;
-  border: 1.5px solid rgba(255, 107, 174, 0.2);
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: var(--shadow-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.status.error {
-  color: var(--danger);
-}
-
-.status.ok {
-  color: var(--ok);
 }
 
 .thank-you {
@@ -835,6 +865,15 @@ body.modal-open {
   .small,
   .prompt-list {
     font-size: 0.93rem;
+  }
+
+  .guest-photo-frame {
+    width: clamp(170px, 56vw, 230px);
+  }
+
+  .guest-photo {
+    min-height: 240px;
+    max-height: 360px;
   }
 
   .btn {

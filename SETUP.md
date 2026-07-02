@@ -112,6 +112,7 @@ Your app is now live at: `https://YOUR_PROJECT.web.app`
 - These files are in `.gitignore` to protect secrets
 - Each developer/deployment needs their own config files
 - The gallery password (in `config.js`) is client-side only—not secure for sensitive data
+- You can add a local landing photo at `public/local-media/guest-of-honor.jpg` (portrait/vertical works best); it is ignored by git
 
 ## File Locations Summary
 
