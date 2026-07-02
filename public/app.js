@@ -446,7 +446,12 @@ function pickRecorderOptions(selectedMode) {
       : ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"];
   for (const type of candidates) {
     if (MediaRecorder.isTypeSupported(type)) {
-      return { mimeType: type };
+      const options = { mimeType: type };
+      if (selectedMode === "video") {
+        options.videoBitsPerSecond = 2500000;
+      }
+      options.audioBitsPerSecond = 128000;
+      return options;
     }
   }
   return null;
@@ -456,14 +461,17 @@ function videoConstraints() {
   return {
     video: {
       facingMode: { ideal: facingMode },
-      width: { ideal: 960, max: 1280 },
-      height: { ideal: 540, max: 720 },
-      frameRate: { ideal: 24, max: 30 }
+      width: { ideal: 1280, max: 1920 },
+      height: { ideal: 720, max: 1080 },
+      frameRate: { ideal: 30, max: 30 },
+      aspectRatio: { ideal: 16 / 9 }
     },
     audio: {
       echoCancellation: true,
       noiseSuppression: true,
-      autoGainControl: true
+      autoGainControl: true,
+      sampleRate: { ideal: 48000 },
+      channelCount: { ideal: 2 }
     }
   };
 }
