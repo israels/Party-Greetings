@@ -22,7 +22,6 @@ const passwordStatus = document.getElementById("passwordStatus");
 const galleryStatus = document.getElementById("galleryStatus");
 const galleryList = document.getElementById("galleryList");
 const sortBy = document.getElementById("sortBy");
-const downloadAllBtn = document.getElementById("downloadAllBtn");
 const mediaModal = document.getElementById("mediaModal");
 const mediaModalContent = document.getElementById("mediaModalContent");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
@@ -87,46 +86,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   sortBy.addEventListener("change", () => {
     renderGallery();
-  });
-
-  downloadAllBtn.addEventListener("click", async () => {
-    if (!entries.length) {
-      setGalleryStatus("No files available to download.", true);
-      return;
-    }
-    if (!window.JSZip) {
-      setGalleryStatus("Zip library failed to load.", true);
-      return;
-    }
-
-    setGalleryStatus("Preparing ZIP download...", false);
-    downloadAllBtn.disabled = true;
-    const zip = new window.JSZip();
-    let complete = 0;
-
-    try {
-      for (const item of entries) {
-        const response = await fetch(item.downloadURL);
-        if (!response.ok) {
-          throw new Error(`Unable to fetch ${item.fileName || item.id}`);
-        }
-        const blob = await response.blob();
-        const fallbackExt = item.mediaType === "audio" ? "webm" : "webm";
-        const fileName = item.fileName || `${item.id}.${fallbackExt}`;
-        zip.file(fileName, blob);
-        complete += 1;
-        setGalleryStatus(`Preparing ZIP... ${complete}/${entries.length}`, false);
-      }
-
-      const zipBlob = await zip.generateAsync({ type: "blob" });
-      const guestSlug = slugify(window.appConfig?.guestName || "guest");
-      downloadBlob(zipBlob, `${guestSlug}-blessings-${Date.now()}.zip`);
-      setGalleryStatus("ZIP download is ready.", false, true);
-    } catch (error) {
-      setGalleryStatus(error.message || "Failed to prepare ZIP download.", true);
-    } finally {
-      downloadAllBtn.disabled = false;
-    }
   });
 
   modalCloseBtn.addEventListener("click", () => closeMediaModal());
