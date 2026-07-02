@@ -12,10 +12,18 @@ const stopBtn = document.getElementById("stopBtn");
 const retakeBtn = document.getElementById("retakeBtn");
 const uploadBtn = document.getElementById("uploadBtn");
 const recordAnotherBtn = document.getElementById("recordAnotherBtn");
+const progressBackBtn = document.getElementById("progressBackBtn");
 
 const liveVideo = document.getElementById("liveVideo");
 const playbackVideo = document.getElementById("playbackVideo");
 const playbackAudio = document.getElementById("playbackAudio");
+const videoControlsOverlay = document.getElementById("videoControlsOverlay");
+const videoStartBtn = document.getElementById("videoStartBtn");
+const videoStopBtn = document.getElementById("videoStopBtn");
+const videoPlayBtn = document.getElementById("videoPlayBtn");
+const videoRetakeBtn = document.getElementById("videoRetakeBtn");
+const audioModeActions = document.getElementById("audioModeActions");
+const audioRetakeActions = document.getElementById("audioRetakeActions");
 const timerLabel = document.getElementById("timerLabel");
 const timer = document.getElementById("timer");
 const statusEl = document.getElementById("status");
@@ -36,7 +44,9 @@ const cameraOverlay = document.getElementById("cameraOverlay");
 const videoWrap = document.getElementById("videoWrap");
 
 const introNextBtn = document.getElementById("introNextBtn");
-const recordBackBtn = document.getElementById("recordBackBtn");
+
+const playSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><polygon points="8,5 19,12 8,19" fill="white" /></svg>';
+const pauseSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3" height="14" rx="1" fill="white" /><rect x="14" y="5" width="3" height="14" rx="1" fill="white" /></svg>';
 
 let mode = "video";
 let facingMode = "user";
@@ -44,6 +54,7 @@ let stream = null;
 let mediaRecorder = null;
 let chunks = [];
 let recordedBlob = null;
+let playbackObjectUrl = null;
 let recordedMediaType = null;
 let isRecording = false;
 let recordingStartedAt = 0;
@@ -56,7 +67,7 @@ introNextBtn.addEventListener("click", () => {
   goToStep(1);
 });
 
-recordBackBtn.addEventListener("click", () => {
+progressBackBtn.addEventListener("click", () => {
   if (isRecording) return;
   goToStep(0);
 });
@@ -98,41 +109,39 @@ flipCameraBtn.addEventListener("click", async () => {
   }
 });
 
-startBtn.addEventListener("click", async () => {
-  try {
-    setStatus("", false);
-    if (!stream) {
-      await setupStream();
-    }
-    resetPlaybackElements();
-    startRecording();
-  } catch (error) {
-    setStatus(normalizeError(error), true);
-  }
-});
+startBtn.addEventListener("click", handleStartRecording);
+videoStartBtn.addEventListener("click", handleStartRecording);
 
-stopBtn.addEventListener("click", () => {
-  if (!isRecording || !mediaRecorder) {
+stopBtn.addEventListener("click", handleStopRecording);
+videoStopBtn.addEventListener("click", handleStopRecording);
+
+retakeBtn.addEventListener("click", handleRetake);
+videoRetakeBtn.addEventListener("click", handleRetake);
+
+videoPlayBtn.addEventListener("click", async () => {
+  if (!playbackVideo.src) {
     return;
   }
-  mediaRecorder.stop();
+  if (playbackVideo.paused) {
+    try {
+      await playbackVideo.play();
+      videoPlayBtn.innerHTML = pauseSvg;
+    } catch (error) {
+      setStatus("Unable to start playback right now.", true);
+    }
+  } else {
+    playbackVideo.pause();
+    videoPlayBtn.innerHTML = playSvg;
+  }
 });
 
-retakeBtn.addEventListener("click", async () => {
-  recordedBlob = null;
-  recordedMediaType = null;
-  recordedDurationSeconds = 0;
-  uploadBtn.disabled = true;
-  reviewSection.classList.add("hidden");
-  progressWrap.classList.add("hidden");
-  thankYou.classList.add("hidden");
-  recordAnotherBtn.classList.add("hidden");
-  try {
-    await setupStream();
-    renderIdleTimer();
-    setStatus("Ready for a fresh take.", false);
-  } catch (error) {
-    setStatus(normalizeError(error), true);
+playbackVideo.addEventListener("ended", () => {
+  videoPlayBtn.innerHTML = playSvg;
+});
+
+playbackVideo.addEventListener("pause", () => {
+  if (!playbackVideo.ended) {
+    videoPlayBtn.innerHTML = playSvg;
   }
 });
 
@@ -211,6 +220,46 @@ window.addEventListener("beforeunload", () => {
   cleanupStream();
 });
 
+async function handleStartRecording() {
+  try {
+    setStatus("", false);
+    if (!stream) {
+      await setupStream();
+    }
+    resetPlaybackElements();
+    startRecording();
+  } catch (error) {
+    setStatus(normalizeError(error), true);
+  }
+}
+
+function handleStopRecording() {
+  if (!isRecording || !mediaRecorder) {
+    return;
+  }
+  mediaRecorder.stop();
+}
+
+async function handleRetake() {
+  if (isRecording) return;
+  recordedBlob = null;
+  recordedMediaType = null;
+  recordedDurationSeconds = 0;
+  uploadBtn.disabled = true;
+  reviewSection.classList.add("hidden");
+  progressWrap.classList.add("hidden");
+  thankYou.classList.add("hidden");
+  recordAnotherBtn.classList.add("hidden");
+  resetPlaybackElements();
+  try {
+    await setupStream();
+    renderIdleTimer();
+    setStatus("Ready for a fresh take.", false);
+  } catch (error) {
+    setStatus(normalizeError(error), true);
+  }
+}
+
 async function retakeAndPrep() {
   recordedBlob = null;
   recordedMediaType = null;
@@ -222,6 +271,7 @@ async function retakeAndPrep() {
   uploadProgressText.textContent = "0%";
   thankYou.classList.add("hidden");
   recordAnotherBtn.classList.add("hidden");
+  resetPlaybackElements();
   await setupStream();
   renderIdleTimer();
   setStatus("You can record another blessing now.", false);
@@ -247,9 +297,8 @@ function startRecording() {
   chunks = [];
   recordingStartedAt = Date.now();
   isRecording = true;
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
   uploadBtn.disabled = true;
+  syncControlAvailability();
   reviewSection.classList.add("hidden");
   thankYou.classList.add("hidden");
   recordAnotherBtn.classList.add("hidden");
@@ -271,14 +320,16 @@ function startRecording() {
 
   mediaRecorder.onstop = () => {
     isRecording = false;
-    stopBtn.disabled = true;
-    startBtn.disabled = false;
     clearTimers();
 
     recordedDurationSeconds = Math.min(MAX_SECONDS, Math.round((Date.now() - recordingStartedAt) / 1000));
     const recorderType = mediaRecorder.mimeType || (mode === "video" ? "video/webm" : "audio/webm");
     recordedBlob = new Blob(chunks, { type: recorderType });
     recordedMediaType = mode;
+
+    // Release camera/mic while reviewing to improve playback reliability on mobile browsers.
+    cleanupStream();
+
     renderPlayback(recordedBlob, recordedMediaType);
     uploadBtn.disabled = false;
     reviewSection.classList.remove("hidden");
@@ -289,39 +340,59 @@ function startRecording() {
 }
 
 function renderPlayback(blob, mediaType) {
-  const objectUrl = URL.createObjectURL(blob);
+  revokePlaybackObjectUrl();
+  playbackObjectUrl = URL.createObjectURL(blob);
   liveVideo.classList.add("hidden");
   playbackVideo.classList.add("hidden");
   playbackAudio.classList.add("hidden");
 
   if (mediaType === "video") {
-    playbackVideo.src = objectUrl;
+    playbackVideo.src = playbackObjectUrl;
+    playbackVideo.load();
+    playbackVideo.currentTime = 0;
+    playbackVideo.pause();
+    videoPlayBtn.innerHTML = playSvg;
     playbackVideo.classList.remove("hidden");
   } else {
-    playbackAudio.src = objectUrl;
+    playbackAudio.src = playbackObjectUrl;
+    playbackAudio.load();
     playbackAudio.classList.remove("hidden");
   }
 }
 
 function resetPlaybackElements() {
+  revokePlaybackObjectUrl();
   playbackVideo.pause();
   playbackAudio.pause();
   playbackVideo.removeAttribute("src");
   playbackAudio.removeAttribute("src");
+  playbackVideo.load();
+  playbackAudio.load();
   playbackVideo.classList.add("hidden");
   playbackAudio.classList.add("hidden");
+  videoPlayBtn.innerHTML = playSvg;
   if (mode === "video") {
     liveVideo.classList.remove("hidden");
   }
 }
 
 function resetPreviewOnly() {
+  revokePlaybackObjectUrl();
   playbackVideo.pause();
   playbackAudio.pause();
   playbackVideo.removeAttribute("src");
   playbackAudio.removeAttribute("src");
+  playbackVideo.load();
+  playbackAudio.load();
   playbackVideo.classList.add("hidden");
   playbackAudio.classList.add("hidden");
+}
+
+function revokePlaybackObjectUrl() {
+  if (playbackObjectUrl) {
+    URL.revokeObjectURL(playbackObjectUrl);
+    playbackObjectUrl = null;
+  }
 }
 
 function renderIdleTimer() {
@@ -364,6 +435,7 @@ function cleanupStream() {
     stream.getTracks().forEach((track) => track.stop());
     stream = null;
   }
+  liveVideo.srcObject = null;
   syncControlAvailability();
 }
 
@@ -502,21 +574,26 @@ function updateStepUI() {
 
 function syncControlAvailability() {
   const hasStream = !!stream;
+  const hasReviewMedia = !!recordedBlob;
   const isVideo = mode === "video";
 
-  // Camera permission overlay: visible when no stream
-  cameraOverlay.classList.toggle("hidden", hasStream);
+  cameraOverlay.classList.toggle("hidden", hasStream || hasReviewMedia);
   enableMediaBtn.textContent = isVideo ? "Enable Camera + Microphone" : "Enable Microphone";
-
-  // Video wrap: hide when audio mode with active stream (nothing useful to show)
   videoWrap.classList.toggle("hidden", !isVideo && hasStream);
-
-  // Flip camera: overlaid circle button, only when video stream is live
-  flipCameraBtn.classList.toggle("hidden", !isVideo || !hasStream);
+  flipCameraBtn.classList.toggle("hidden", !isVideo || !hasStream || hasReviewMedia);
   flipCameraBtn.disabled = isRecording;
 
-  // Start only available when stream is ready
+  videoControlsOverlay.classList.toggle("hidden", !isVideo || (!hasStream && !hasReviewMedia));
+  videoStartBtn.classList.toggle("hidden", !isVideo || !hasStream || isRecording || hasReviewMedia);
+  videoStopBtn.classList.toggle("hidden", !isVideo || !isRecording);
+  videoPlayBtn.classList.toggle("hidden", !isVideo || !hasReviewMedia);
+  videoRetakeBtn.classList.toggle("hidden", !isVideo || !hasReviewMedia);
+  audioModeActions.classList.toggle("hidden", isVideo);
+  audioRetakeActions.classList.toggle("hidden", isVideo || !hasReviewMedia);
+
   startBtn.disabled = !hasStream || isRecording;
+  stopBtn.disabled = !isRecording;
+  progressBackBtn.classList.toggle("hidden", currentStep !== 1);
 }
 
 async function attemptCameraSetup() {
