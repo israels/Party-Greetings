@@ -76,7 +76,27 @@ When prompted:
 - Single-page app: `Yes`
 - GitHub CI/CD: `No`
 
-## 5. Deploy
+## 5. Configure Storage CORS
+
+To allow the gallery to download media files from Firebase Storage, configure CORS on the underlying Cloud Storage bucket:
+
+1. Use the project root `cors.json` file already added to this repo:
+   ```json
+   [
+     {
+       "origin": ["*"],
+       "method": ["GET", "HEAD"],
+       "maxAgeSeconds": 3600
+     }
+   ]
+   ```
+2. In Google Cloud Console, open Cloud Storage → Buckets → your Firebase Storage bucket (usually `YOUR_PROJECT_ID.appspot.com`).
+3. Open the bucket's configuration or edit bucket settings and add the CORS rule above.
+4. Save the change and wait a minute for the policy to propagate.
+
+If you prefer the CLI later, the same change can be applied from Google Cloud Shell with `gsutil`, but the browser flow works without installing that tool locally.
+
+## 6. Deploy
 
 ```bash
 firebase deploy
