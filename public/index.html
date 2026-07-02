@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leave a Blessing 🎉</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <h1 id="mainTitle">Leave a Blessing 🎉</h1>
+        <p class="lead" id="mainDescription">
+          Record a short encouragement or memory. You can submit more than one blessing if you'd like.
+        </p>
+        <p class="notice">
+          Max length is <strong>90 seconds</strong>. Your recording will auto-stop at the limit.
+          Uploaded blessings will be shared with the guest of honor after the event.
+        </p>
+        <ul class="prompt-list" id="promptList"></ul>
+      </section>
+
+      <section class="card">
+        <h2>1. Choose recording type</h2>
+        <div class="mode-picker">
+          <label><input type="radio" name="mode" value="video" checked /> Video (Preferred)</label>
+          <label><input type="radio" name="mode" value="audio" /> Audio only</label>
+        </div>
+        <div class="actions">
+          <button id="enableMediaBtn" class="btn">Enable Camera + Mic</button>
+          <button id="flipCameraBtn" class="btn btn-secondary">Flip Camera</button>
+        </div>
+        <p id="permissionHelp" class="small">
+          When prompted, tap <strong>Allow</strong> for camera and microphone access.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>2. Record</h2>
+        <video id="liveVideo" autoplay playsinline muted></video>
+        <div class="timer-wrap">
+          <span id="timerLabel"></span>
+          <span id="timer" class="timer"></span>
+        </div>
+        <div class="actions">
+          <button id="startBtn" class="btn btn-gold">Start Recording</button>
+          <button id="stopBtn" class="btn" disabled>Stop Recording</button>
+        </div>
+        <p id="status" class="status"></p>
+      </section>
+
+      <section class="card">
+        <h2>3. Review & Upload</h2>
+        <video id="playbackVideo" controls playsinline></video>
+        <audio id="playbackAudio" controls></audio>
+        <div class="actions">
+          <button id="retakeBtn" class="btn btn-secondary" disabled>Record Again</button>
+        </div>
+        <form id="uploadForm" style="display: none">
+          <label for="guestName">Your name (optional)</label>
+          <input id="guestName" type="text" placeholder="Anonymous" />
+          <label for="guestMessage" id="guestMessageLabel">A note (optional)</label>
+          <textarea id="guestMessage" placeholder="What would you like to say?" rows="3"></textarea>
+          <div class="progress-wrap hidden" id="progressWrap">
+            <progress id="uploadProgress" value="0" max="100"></progress>
+            <span id="uploadProgressText">0%</span>
+          </div>
+          <div class="actions">
+            <button id="uploadBtn" class="btn btn-gold" type="submit" disabled>Upload Blessing</button>
+          </div>
+        </form>
+        <div class="thank-you hidden" id="thankYou">
+          <p style="margin: 0">✨ <strong>Thank you!</strong> Your blessing has been uploaded.</p>
+        </div>
+        <button id="recordAnotherBtn" class="btn hidden">Record Another Blessing</button>
+      </section>
+    </main>
+
+    <script type="module" src="./firebase-config.js"></script>
+    <script type="module" src="./config-loader.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
