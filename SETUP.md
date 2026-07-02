@@ -106,6 +106,44 @@ firebase deploy
 
 Your app is now live at: `https://YOUR_PROJECT.web.app`
 
+## CI Deploy Without Committing Guest Photo
+
+To keep the landing guest photo out of source control while still deploying it from GitHub Actions:
+
+1. Keep the app image path in [public/index.html](public/index.html#L52) as:
+  - `./local-media/guest-of-honor.jpg`
+2. Choose one of these GitHub repository secrets:
+  - `GUEST_OF_HONOR_PHOTO_URL` (recommended, usually from Firebase Storage)
+  - `GUEST_OF_HONOR_PHOTO_B64` (fallback only for small files)
+3. Provide the selected secret value.
+
+For URL mode (`GUEST_OF_HONOR_PHOTO_URL`):
+
+- Use a direct-download URL reachable by GitHub Actions.
+- This avoids GitHub secret size limits for large images.
+- Firebase Storage download URLs work well for this.
+
+Recommended flow:
+
+1. Upload `guest-of-honor.jpg` to Firebase Storage (for example `images/guest-of-honor.jpg`).
+2. Copy the file's download URL from Firebase Console.
+3. Save that URL into GitHub Actions secret `GUEST_OF_HONOR_PHOTO_URL`.
+4. Keep `GUEST_OF_HONOR_PHOTO_B64` empty unless you need fallback behavior.
+
+PowerShell example to generate base64 from a local photo:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\guest-of-honor.jpg")) | Set-Clipboard
+```
+
+Then paste clipboard contents into the `GUEST_OF_HONOR_PHOTO_B64` secret value.
+
+During pipeline deploy, workflow [firebase-hosting-merge.yml](.github/workflows/firebase-hosting-merge.yml) writes this secret into:
+
+- `public/local-media/guest-of-honor.jpg`
+
+This guarantees each CI deploy includes the photo even though it is not in git.
+
 ## ⚠️ Important Notes
 
 - **Never commit** `public/firebase-config.js` or `public/config.js`

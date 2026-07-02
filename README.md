@@ -265,6 +265,26 @@ Edit `public/app.js`:
 const MAX_SECONDS = 90;  // Change to desired limit
 ```
 
+### Guest Photo Without Committing to Git
+
+The landing page photo uses:
+
+```html
+./local-media/guest-of-honor.jpg
+```
+
+To keep this image out of source control while still deploying from GitHub Actions:
+
+1. Upload the photo to Firebase Storage (example path: `images/guest-of-honor.jpg`).
+2. Copy its download URL.
+3. Save that URL as repository secret `GUEST_OF_HONOR_PHOTO_URL`.
+
+The deploy workflow in `.github/workflows/firebase-hosting-merge.yml` downloads the image during CI into `public/local-media/guest-of-honor.jpg`.
+
+Fallback option:
+
+- You can use `GUEST_OF_HONOR_PHOTO_B64`, but URL mode is preferred because large images can exceed GitHub secret size limits.
+
 ---
 
 ## Browser Support
