@@ -1,4 +1,3 @@
-import { db, storage } from "./firebase-config.js";
 import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 import { getDownloadURL, ref, uploadBytesResumable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
@@ -47,6 +46,19 @@ const introNextBtn = document.getElementById("introNextBtn");
 
 const playSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><polygon points="8,5 19,12 8,19" fill="white" /></svg>';
 const pauseSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="5" width="3" height="14" rx="1" fill="white" /><rect x="14" y="5" width="3" height="14" rx="1" fill="white" /></svg>';
+
+let db = null;
+let storage = null;
+const firebaseReadyPromise = import("./firebase-config.js")
+  .then((firebaseModule) => {
+    db = firebaseModule.db;
+    storage = firebaseModule.storage;
+    return true;
+  })
+  .catch((error) => {
+    console.error("firebase-config.js could not be loaded.", error);
+    return false;
+  });
 
 let mode = "video";
 let facingMode = "user";
@@ -156,6 +168,9 @@ uploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!recordedBlob) {
     setStatus("Please record a blessing first.", true);
+    return;
+  }
+  if (!(await ensureFirebaseReady())) {
     return;
   }
 
@@ -528,6 +543,18 @@ function slugify(text) {
 function getExtension(mimeType, mediaType) {
   if (mimeType.includes("mp4")) {
     return "mp4";
+  }
+
+  async function ensureFirebaseReady() {
+    if (db && storage) {
+      return true;
+    }
+    const ready = await firebaseReadyPromise;
+    if (!ready || !db || !storage) {
+      setStatus("Upload is unavailable because Firebase config is missing in this deployment.", true);
+      return false;
+    }
+    return true;
   }
   if (mimeType.includes("mpeg")) {
     return "mp3";
