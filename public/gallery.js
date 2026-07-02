@@ -22,6 +22,8 @@ const passwordStatus = document.getElementById("passwordStatus");
 const galleryStatus = document.getElementById("galleryStatus");
 const galleryList = document.getElementById("galleryList");
 const sortBy = document.getElementById("sortBy");
+const playAllVideosBtn = document.getElementById("playAllVideosBtn");
+const stopPlayAllBtn = document.getElementById("stopPlayAllBtn");
 const mediaModal = document.getElementById("mediaModal");
 const mediaModalContent = document.getElementById("mediaModalContent");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
@@ -36,6 +38,11 @@ const modalDeleteBtn = document.getElementById("modalDeleteBtn");
 let entries = [];
 let activeModalEntry = null;
 let activeModalMedia = null;
+
+// Play All state
+let isPlayingAll = false;
+let playAllQueue = [];
+let playAllCurrentIndex = 0;
 
 // WebM files recorded by MediaRecorder often lack duration metadata, causing
 // browsers to report duration=Infinity and pin the seekbar thumb at the far
@@ -88,6 +95,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderGallery();
   });
 
+  playAllVideosBtn.addEventListener("click", startPlayAll);
+  stopPlayAllBtn.addEventListener("click", stopPlayAll);
+
   modalCloseBtn.addEventListener("click", () => closeMediaModal());
   modalFullscreenBtn.addEventListener("click", toggleModalFullscreen);
   modalDownloadBtn.addEventListener("click", () => {
@@ -131,7 +141,62 @@ function initGalleryFeed() {
   );
 }
 
-function openMediaModal(entry) {
+function startPlayAll() {
+  // Filter videos only and sort oldest first
+  const videos = entries
+    .filter(entry => entry.mediaType === "video")
+    .sort((a, b) => Number(a.createdAtMs || 0) - Number(b.createdAtMs || 0));
+
+  if (!videos.length) {
+    setGalleryStatus("No videos available to play.", true);
+    return;
+  }
+
+  isPlayingAll = true;
+  playAllQueue = videos;
+  playAllCurrentIndex = 0;
+
+  playAllVideosBtn.disabled = true;
+  stopPlayAllBtn.disabled = false;
+
+  setGalleryStatus(`Playing all videos (oldest first). ${videos.length} video${videos.length === 1 ? "" : "s"}.`, false);
+
+  // Open modal and play first video
+  openPlayAllModal();
+}
+
+function stopPlayAll() {
+  isPlayingAll = false;
+  playAllQueue = [];
+  playAllCurrentIndex = 0;
+
+  playAllVideosBtn.disabled = false;
+  stopPlayAllBtn.disabled = true;
+
+  closeMediaModal();
+  setGalleryStatus("Play All stopped.", false);
+}
+
+function openPlayAllModal() {
+  if (playAllCurrentIndex >= playAllQueue.length) {
+    // Reached end of queue
+    setGalleryStatus("Finished playing all videos.", false);
+    stopPlayAll();
+    return;
+  }
+
+  const entry = playAllQueue[playAllCurrentIndex];
+  openMediaModal(entry, true);
+}
+
+function handlePlayAllEnded() {
+  if (isPlayingAll) {
+    playAllCurrentIndex++;
+    openPlayAllModal();
+  }
+}
+
+function openMediaModal(entry, isPlayAll = false) {
   if (!entry) {
     return;
   }
@@ -145,13 +210,28 @@ function openMediaModal(entry) {
   media.playsInline = entry.mediaType !== "audio";
   media.src = entry.downloadURL;
   media.addEventListener("loadedmetadata", () => fixInfiniteDuration(media));
+
+  if (isPlayAll) {
+    media.autoplay = true;
+    media.addEventListener("ended", handlePlayAllEnded);
+  }
+
   modalMediaShell.innerHTML = "";
   modalMediaShell.appendChild(media);
   activeModalMedia = media;
 
   modalTitle.textContent = entry.guestName || "Anonymous";
   modalSubtitle.textContent = entry.guestMessage ? entry.guestMessage : "No note provided.";
+
+  let playAllText = "";
+  if (isPlayAll) {
+    const total = playAllQueue.length;
+    const current = playAllCurrentIndex + 1;
+    playAllText = `<div><strong>Play All</strong> ${current} of ${total}</div>`;
+  }
+
   modalMetaText.innerHTML = `
+    ${playAllText}
     <div><strong>Recorded</strong> ${formatDate(entry.createdAtMs)}</div>
     <div><strong>Duration</strong> ${Math.max(1, Math.round(entry.durationSeconds || 0))}s</div>
   `;
@@ -289,7 +369,7 @@ function renderGallery() {
     enlargeBtn.className = "btn btn-secondary";
     enlargeBtn.textContent = "Enlarge";
     enlargeBtn.addEventListener("click", () => {
-      openMediaModal(entry);
+      openMediaModal(entry, false);
     });
     actions.appendChild(enlargeBtn);
 
