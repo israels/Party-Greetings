@@ -27,6 +27,16 @@ const guestMessageInput = document.getElementById("guestMessage");
 const progressWrap = document.getElementById("progressWrap");
 const uploadProgress = document.getElementById("uploadProgress");
 const uploadProgressText = document.getElementById("uploadProgressText");
+const stepPanels = document.querySelectorAll("[data-step-panel]");
+const workflowProgressTrack = document.getElementById("workflowProgressTrack");
+const workflowProgressFill = document.getElementById("workflowProgressFill");
+const workflowProgressStep = document.getElementById("workflowProgressStep");
+const reviewSection = document.getElementById("reviewSection");
+const cameraOverlay = document.getElementById("cameraOverlay");
+const videoWrap = document.getElementById("videoWrap");
+
+const introNextBtn = document.getElementById("introNextBtn");
+const recordBackBtn = document.getElementById("recordBackBtn");
 
 let mode = "video";
 let facingMode = "user";
@@ -40,32 +50,39 @@ let recordingStartedAt = 0;
 let timerIntervalId = null;
 let autoStopId = null;
 let recordedDurationSeconds = 0;
+let currentStep = 0;
+
+introNextBtn.addEventListener("click", () => {
+  goToStep(1);
+});
+
+recordBackBtn.addEventListener("click", () => {
+  if (isRecording) return;
+  goToStep(0);
+});
 
 const modeInputs = document.querySelectorAll('input[name="mode"]');
 modeInputs.forEach((input) => {
   input.addEventListener("change", async (event) => {
-    if (isRecording) {
-      return;
-    }
+    if (isRecording) return;
     mode = event.target.value;
     recordedBlob = null;
     recordedMediaType = null;
     uploadBtn.disabled = true;
-    retakeBtn.disabled = true;
-    await setupStream();
-    renderIdleTimer();
+    reviewSection.classList.add("hidden");
+    progressWrap.classList.add("hidden");
     resetPreviewOnly();
+    renderIdleTimer();
+    if (stream) {
+      await setupStream();
+    } else {
+      syncControlAvailability();
+    }
   });
 });
 
 enableMediaBtn.addEventListener("click", async () => {
-  try {
-    setStatus("Requesting access to your camera/microphone...", false);
-    await setupStream();
-    setStatus("Ready! You can start recording.", false);
-  } catch (error) {
-    setStatus(normalizeError(error), true);
-  }
+  await attemptCameraSetup();
 });
 
 flipCameraBtn.addEventListener("click", async () => {
@@ -106,21 +123,24 @@ retakeBtn.addEventListener("click", async () => {
   recordedMediaType = null;
   recordedDurationSeconds = 0;
   uploadBtn.disabled = true;
-  retakeBtn.disabled = true;
+  reviewSection.classList.add("hidden");
+  progressWrap.classList.add("hidden");
   thankYou.classList.add("hidden");
   recordAnotherBtn.classList.add("hidden");
   try {
     await setupStream();
     renderIdleTimer();
-    setStatus("Ready for a new recording.", false);
+    setStatus("Ready for a fresh take.", false);
   } catch (error) {
     setStatus(normalizeError(error), true);
   }
 });
 
 recordAnotherBtn.addEventListener("click", async () => {
+  guestNameInput.value = "";
   guestMessageInput.value = "";
   await retakeAndPrep();
+  goToStep(1);
 });
 
 uploadForm.addEventListener("submit", async (event) => {
@@ -143,7 +163,7 @@ uploadForm.addEventListener("submit", async (event) => {
   uploadProgress.value = 0;
   uploadProgressText.textContent = "0%";
   uploadBtn.disabled = true;
-  setStatus("Uploading blessing...", false);
+  setStatus("Uploading your blessing...", false);
 
   const mediaRef = ref(storage, storagePath);
   const uploadTask = uploadBytesResumable(mediaRef, recordedBlob, {
@@ -177,11 +197,12 @@ uploadForm.addEventListener("submit", async (event) => {
         createdAtMs: Date.now(),
         createdAt: serverTimestamp()
       });
-      setStatus("Upload complete! Your blessing has been saved.", false, true);
+      setStatus("Upload complete. Your blessing has been saved.", false, true);
       thankYou.classList.remove("hidden");
       recordAnotherBtn.classList.remove("hidden");
       uploadProgress.value = 100;
       uploadProgressText.textContent = "100%";
+      goToStep(2, { force: true });
     }
   );
 });
@@ -195,11 +216,12 @@ async function retakeAndPrep() {
   recordedMediaType = null;
   recordedDurationSeconds = 0;
   uploadBtn.disabled = true;
-  retakeBtn.disabled = true;
+  reviewSection.classList.add("hidden");
   progressWrap.classList.add("hidden");
   uploadProgress.value = 0;
   uploadProgressText.textContent = "0%";
   thankYou.classList.add("hidden");
+  recordAnotherBtn.classList.add("hidden");
   await setupStream();
   renderIdleTimer();
   setStatus("You can record another blessing now.", false);
@@ -212,12 +234,11 @@ async function setupStream() {
   if (mode === "video") {
     liveVideo.srcObject = stream;
     liveVideo.classList.remove("hidden");
-    flipCameraBtn.disabled = false;
   } else {
     liveVideo.srcObject = null;
     liveVideo.classList.add("hidden");
-    flipCameraBtn.disabled = true;
   }
+  syncControlAvailability();
 }
 
 function startRecording() {
@@ -228,8 +249,8 @@ function startRecording() {
   isRecording = true;
   startBtn.disabled = true;
   stopBtn.disabled = false;
-  retakeBtn.disabled = true;
   uploadBtn.disabled = true;
+  reviewSection.classList.add("hidden");
   thankYou.classList.add("hidden");
   recordAnotherBtn.classList.add("hidden");
 
@@ -252,7 +273,6 @@ function startRecording() {
     isRecording = false;
     stopBtn.disabled = true;
     startBtn.disabled = false;
-    retakeBtn.disabled = false;
     clearTimers();
 
     recordedDurationSeconds = Math.min(MAX_SECONDS, Math.round((Date.now() - recordingStartedAt) / 1000));
@@ -260,9 +280,9 @@ function startRecording() {
     recordedBlob = new Blob(chunks, { type: recorderType });
     recordedMediaType = mode;
     renderPlayback(recordedBlob, recordedMediaType);
-    uploadForm.classList.remove("hidden");
     uploadBtn.disabled = false;
-    setStatus("Preview your blessing, then upload or retake.", false);
+    reviewSection.classList.remove("hidden");
+    setStatus("Review your blessing, then upload or retake.", false);
   };
 
   mediaRecorder.start(1000);
@@ -344,6 +364,7 @@ function cleanupStream() {
     stream.getTracks().forEach((track) => track.stop());
     stream = null;
   }
+  syncControlAvailability();
 }
 
 function pickRecorderOptions(selectedMode) {
@@ -440,4 +461,76 @@ function getExtension(mimeType, mediaType) {
   return "webm";
 }
 
+function goToStep(step, { force = false } = {}) {
+  const safeStep = Math.max(0, Math.min(2, step));
+  if (!force && !canAccessStep(safeStep)) {
+    return;
+  }
+  currentStep = safeStep;
+  updateStepUI();
+  if (safeStep === 1 && !stream) {
+    attemptCameraSetup();
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function canAccessStep(step) {
+  if (step <= currentStep) return true;
+  if (step === 1) return true;
+  if (step === 2) return !recordAnotherBtn.classList.contains("hidden");
+  return false;
+}
+
+function updateStepUI() {
+  stepPanels.forEach((panel) => {
+    const panelStep = Number(panel.dataset.stepPanel);
+    const isActive = panelStep === currentStep;
+    panel.classList.toggle("active", isActive);
+    panel.classList.toggle("hidden", !isActive);
+  });
+
+  const stepNumber = currentStep + 1;
+  const totalSteps = 3;
+  const progressPercent = (stepNumber / totalSteps) * 100;
+  workflowProgressFill.style.width = `${progressPercent}%`;
+  workflowProgressTrack.setAttribute("aria-valuenow", String(stepNumber));
+  workflowProgressTrack.setAttribute("aria-valuetext", `Step ${stepNumber} of ${totalSteps}`);
+  workflowProgressStep.textContent = `Step ${stepNumber} of ${totalSteps}`;
+
+  syncControlAvailability();
+}
+
+function syncControlAvailability() {
+  const hasStream = !!stream;
+  const isVideo = mode === "video";
+
+  // Camera permission overlay: visible when no stream
+  cameraOverlay.classList.toggle("hidden", hasStream);
+  enableMediaBtn.textContent = isVideo ? "Enable Camera + Microphone" : "Enable Microphone";
+
+  // Video wrap: hide when audio mode with active stream (nothing useful to show)
+  videoWrap.classList.toggle("hidden", !isVideo && hasStream);
+
+  // Flip camera: overlaid circle button, only when video stream is live
+  flipCameraBtn.classList.toggle("hidden", !isVideo || !hasStream);
+  flipCameraBtn.disabled = isRecording;
+
+  // Start only available when stream is ready
+  startBtn.disabled = !hasStream || isRecording;
+}
+
+async function attemptCameraSetup() {
+  enableMediaBtn.disabled = true;
+  setStatus("Requesting access\u2026", false);
+  try {
+    await setupStream();
+    setStatus("Ready to record.", false);
+  } catch (error) {
+    setStatus(normalizeError(error), true);
+  } finally {
+    enableMediaBtn.disabled = false;
+  }
+}
+
 renderIdleTimer();
+goToStep(0, { force: true });
