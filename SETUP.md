@@ -90,9 +90,11 @@ To allow the gallery to download media files from Firebase Storage, configure CO
      }
    ]
    ```
-2. In Google Cloud Console, open Cloud Storage → Buckets → your Firebase Storage bucket (usually `YOUR_PROJECT_ID.appspot.com`).
-3. Open the bucket's configuration or edit bucket settings and add the CORS rule above.
-4. Save the change and wait a minute for the policy to propagate.
+2. In Google Cloud Console, open **Cloud Storage** → **Buckets**
+3. **⚠️ Note:** Firebase Storage buckets don't appear by default in the bucket list. To find yours, manually enter the bucket name in the search field: `YOUR_PROJECT_ID.appspot.com`
+4. Click on your bucket, then go to the **Configuration** tab
+5. Scroll down to **CORS configuration** and add the rule from step 1
+6. Save the change and wait a minute for the policy to propagate
 
 If you prefer the CLI later, the same change can be applied from Google Cloud Shell with `gsutil`, but the browser flow works without installing that tool locally.
 
