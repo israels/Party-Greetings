@@ -260,6 +260,7 @@ function startRecording() {
     recordedBlob = new Blob(chunks, { type: recorderType });
     recordedMediaType = mode;
     renderPlayback(recordedBlob, recordedMediaType);
+    uploadForm.classList.remove("hidden");
     uploadBtn.disabled = false;
     setStatus("Preview your blessing, then upload or retake.", false);
   };
