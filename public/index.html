@@ -7,78 +7,117 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Fredoka+One&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="page">
-      <section class="card">
-        <h1 id="mainTitle">Leave a Blessing 🎉</h1>
-        <p class="lead" id="mainDescription">
-          Record a short encouragement or memory. You can submit more than one blessing if you'd like.
-        </p>
-        <p class="notice">
-          Max length is <strong>90 seconds</strong>. Your recording will auto-stop at the limit.
-          Uploaded blessings will be shared with the guest of honor after the event.
-        </p>
-        <ul class="prompt-list" id="promptList"></ul>
-      </section>
-
-      <section class="card">
-        <h2>1. Choose recording type</h2>
-        <div class="mode-picker">
-          <label><input type="radio" name="mode" value="video" checked /> Video (Preferred)</label>
-          <label><input type="radio" name="mode" value="audio" /> Audio only</label>
-        </div>
-        <div class="actions">
-          <button id="enableMediaBtn" class="btn">Enable Camera + Mic</button>
-          <button id="flipCameraBtn" class="btn btn-secondary">Flip Camera</button>
-        </div>
-        <p id="permissionHelp" class="small">
-          When prompted, tap <strong>Allow</strong> for camera and microphone access.
-        </p>
-      </section>
-
-      <section class="card">
-        <h2>2. Record</h2>
-        <video id="liveVideo" autoplay playsinline muted></video>
-        <div class="timer-wrap">
-          <span id="timerLabel"></span>
-          <span id="timer" class="timer"></span>
-        </div>
-        <div class="actions">
-          <button id="startBtn" class="btn btn-gold">Start Recording</button>
-          <button id="stopBtn" class="btn" disabled>Stop Recording</button>
-        </div>
-        <p id="status" class="status"></p>
-      </section>
-
-      <section class="card">
-        <h2>3. Review & Upload</h2>
-        <video id="playbackVideo" controls playsinline></video>
-        <audio id="playbackAudio" controls></audio>
-        <div class="actions">
-          <button id="retakeBtn" class="btn btn-secondary" disabled>Record Again</button>
-        </div>
-        <form id="uploadForm" class="hidden">
-          <label for="guestName">Your name (optional)</label>
-          <input id="guestName" type="text" placeholder="Anonymous" />
-          <label for="guestMessage" id="guestMessageLabel">A note (optional)</label>
-          <textarea id="guestMessage" placeholder="What would you like to say?" rows="3"></textarea>
-          <div class="progress-wrap hidden" id="progressWrap">
-            <progress id="uploadProgress" value="0" max="100"></progress>
-            <span id="uploadProgressText">0%</span>
+    <main class="page workflow-page">
+      <section class="workflow-shell">
+        <div class="workflow-progress" role="group" aria-label="Blessing progress">
+          <div class="workflow-progress-head">
+            <span class="workflow-progress-label">Blessing progress</span>
+            <span class="workflow-progress-step" id="workflowProgressStep">Step 1 of 3</span>
           </div>
-          <div class="actions">
-            <button id="uploadBtn" class="btn btn-gold" type="submit" disabled>Upload Blessing</button>
+          <div
+            class="workflow-progress-track"
+            role="progressbar"
+            aria-valuemin="1"
+            aria-valuemax="3"
+            aria-valuenow="1"
+            aria-valuetext="Step 1 of 3"
+            id="workflowProgressTrack"
+          >
+            <span class="workflow-progress-fill" id="workflowProgressFill"></span>
           </div>
-        </form>
-        <div class="thank-you hidden" id="thankYou">
-          <p style="margin: 0">✨ <strong>Thank you!</strong> Your blessing has been uploaded.</p>
         </div>
-        <button id="recordAnotherBtn" class="btn hidden">Record Another Blessing</button>
+
+        <div class="workflow-content">
+          <section class="card step-panel active" data-step-panel="0">
+            <p class="eyebrow">Step 1 of 3</p>
+            <h2 id="mainTitle">Leave a Blessing 🎉</h2>
+            <p class="lead" id="mainDescription">
+              Record a short memory or blessing. You can always submit another one.
+            </p>
+            <p class="notice">
+              <strong>90-second max.</strong> Recording auto-stops at the limit and is shared after the event.
+            </p>
+            <ul class="prompt-list" id="promptList"></ul>
+            <div class="actions">
+              <button id="introNextBtn" class="btn btn-gold">Begin</button>
+            </div>
+          </section>
+
+          <section class="card step-panel" data-step-panel="1">
+            <p class="eyebrow">Step 2 of 3</p>
+            <h2>Record your blessing</h2>
+            <div class="mode-picker">
+              <label><input type="radio" name="mode" value="video" checked /> Video (Preferred)</label>
+              <label><input type="radio" name="mode" value="audio" /> Audio only</label>
+            </div>
+            <div class="video-wrap" id="videoWrap">
+              <div class="camera-overlay" id="cameraOverlay">
+                <p class="camera-overlay-label">Camera &amp; mic required</p>
+                <p class="small camera-overlay-hint">Tap below, then <strong>Allow</strong> when prompted.</p>
+                <button id="enableMediaBtn" class="btn btn-gold">Enable Camera + Microphone</button>
+              </div>
+              <video id="liveVideo" autoplay playsinline muted></video>
+              <video id="playbackVideo" controls playsinline class="hidden"></video>
+              <button id="flipCameraBtn" class="btn-flip-camera hidden" aria-label="Flip camera" title="Flip camera">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 4v6h6M23 20v-6h-6"/>
+                  <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                </svg>
+              </button>
+            </div>
+            <audio id="playbackAudio" controls class="hidden"></audio>
+            <div class="timer-wrap">
+              <span id="timerLabel"></span>
+              <span id="timer" class="timer"></span>
+            </div>
+            <div class="actions">
+              <button id="startBtn" class="btn btn-gold" disabled>Start</button>
+              <button id="stopBtn" class="btn" disabled>Stop Recording</button>
+            </div>
+            <div id="reviewSection" class="review-section hidden">
+              <h3 class="review-heading">Review &amp; Upload</h3>
+              <div class="actions">
+                <button id="retakeBtn" class="btn btn-secondary">Record Again</button>
+              </div>
+              <form id="uploadForm">
+                <label for="guestName">Your name (optional)</label>
+                <input id="guestName" type="text" placeholder="Anonymous" />
+                <label for="guestMessage" id="guestMessageLabel">A note (optional)</label>
+                <textarea id="guestMessage" placeholder="Add a short note" rows="3"></textarea>
+                <div class="progress-wrap hidden" id="progressWrap">
+                  <progress id="uploadProgress" value="0" max="100"></progress>
+                  <span id="uploadProgressText">0%</span>
+                </div>
+                <div class="actions">
+                  <button id="uploadBtn" class="btn btn-gold" type="submit" disabled>Upload Blessing</button>
+                </div>
+              </form>
+            </div>
+            <div class="actions nav-actions">
+              <button id="recordBackBtn" class="btn btn-secondary">Back</button>
+            </div>
+          </section>
+
+          <section class="card step-panel" data-step-panel="2">
+            <p class="eyebrow">Step 3 of 3</p>
+            <h2>All set</h2>
+            <div class="thank-you hidden" id="thankYou">
+              <p style="margin: 0">✨ <strong>Thank you!</strong> Your blessing has been uploaded.</p>
+            </div>
+            <p class="lead">Your blessing is saved. Share another anytime.</p>
+            <div class="actions">
+              <button id="recordAnotherBtn" class="btn btn-gold hidden">Record Another</button>
+            </div>
+          </section>
+        </div>
+
+        <p id="status" class="status workflow-status" role="status" aria-live="polite"></p>
       </section>
     </main>
 
