@@ -23,8 +23,20 @@ const galleryStatus = document.getElementById("galleryStatus");
 const galleryList = document.getElementById("galleryList");
 const sortBy = document.getElementById("sortBy");
 const downloadAllBtn = document.getElementById("downloadAllBtn");
+const mediaModal = document.getElementById("mediaModal");
+const mediaModalContent = document.getElementById("mediaModalContent");
+const modalCloseBtn = document.getElementById("modalCloseBtn");
+const modalTitle = document.getElementById("modalTitle");
+const modalSubtitle = document.getElementById("modalSubtitle");
+const modalMetaText = document.getElementById("modalMetaText");
+const modalMediaShell = document.getElementById("modalMediaShell");
+const modalFullscreenBtn = document.getElementById("modalFullscreenBtn");
+const modalDownloadBtn = document.getElementById("modalDownloadBtn");
+const modalDeleteBtn = document.getElementById("modalDeleteBtn");
 
 let entries = [];
+let activeModalEntry = null;
+let activeModalMedia = null;
 
 // Wait for config and DOM to load before setting up listeners
 document.addEventListener("DOMContentLoaded", async () => {
@@ -105,6 +117,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       downloadAllBtn.disabled = false;
     }
   });
+
+  modalCloseBtn.addEventListener("click", () => closeMediaModal());
+  modalFullscreenBtn.addEventListener("click", toggleModalFullscreen);
+  modalDownloadBtn.addEventListener("click", () => {
+    if (!activeModalEntry) {
+      return;
+    }
+    void downloadEntry(activeModalEntry);
+  });
+  modalDeleteBtn.addEventListener("click", () => {
+    if (!activeModalEntry) {
+      return;
+    }
+    void deleteEntry(activeModalEntry, modalDeleteBtn);
+  });
+  mediaModal.addEventListener("click", (event) => {
+    if (event.target === mediaModal || event.target.matches("[data-close-modal]")) {
+      closeMediaModal();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (!mediaModal.classList.contains("hidden") && event.key === "Escape") {
+      closeMediaModal();
+    }
+  });
+  document.addEventListener("fullscreenchange", handleModalFullscreenChange);
 });
 
 function initGalleryFeed() {
@@ -123,6 +161,123 @@ function initGalleryFeed() {
   );
 }
 
+function openMediaModal(entry) {
+  if (!entry) {
+    return;
+  }
+
+  closeMediaModal();
+  activeModalEntry = entry;
+
+  const media = entry.mediaType === "audio" ? document.createElement("audio") : document.createElement("video");
+  media.controls = true;
+  media.className = "modal-media";
+  media.playsInline = entry.mediaType !== "audio";
+  media.src = entry.downloadURL;
+  modalMediaShell.innerHTML = "";
+  modalMediaShell.appendChild(media);
+  activeModalMedia = media;
+
+  modalTitle.textContent = entry.guestName || "Anonymous";
+  modalSubtitle.textContent = entry.guestMessage ? entry.guestMessage : "No note provided.";
+  modalMetaText.innerHTML = `
+    <div><strong>Recorded</strong> ${formatDate(entry.createdAtMs)}</div>
+    <div><strong>Duration</strong> ${Math.max(1, Math.round(entry.durationSeconds || 0))}s</div>
+  `;
+  modalFullscreenBtn.textContent = "Fullscreen";
+  mediaModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+function closeMediaModal() {
+  if (activeModalMedia) {
+    activeModalMedia.pause?.();
+    activeModalMedia.removeAttribute("src");
+    activeModalMedia.load?.();
+  }
+
+  modalMediaShell.innerHTML = "";
+  activeModalMedia = null;
+  activeModalEntry = null;
+  mediaModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+  modalTitle.textContent = "Preview";
+  modalSubtitle.textContent = "";
+  modalMetaText.innerHTML = "";
+  modalFullscreenBtn.textContent = "Fullscreen";
+
+  if (document.fullscreenElement && document.exitFullscreen) {
+    void document.exitFullscreen().catch(() => {});
+  }
+}
+
+async function toggleModalFullscreen() {
+  if (!mediaModalContent) {
+    return;
+  }
+
+  if (!document.fullscreenElement) {
+    try {
+      await mediaModalContent.requestFullscreen();
+      modalFullscreenBtn.textContent = "Exit Fullscreen";
+    } catch (error) {
+      setGalleryStatus("Fullscreen is unavailable in this browser.", true);
+    }
+  } else if (document.exitFullscreen) {
+    await document.exitFullscreen();
+    modalFullscreenBtn.textContent = "Fullscreen";
+  }
+}
+
+function handleModalFullscreenChange() {
+  if (document.fullscreenElement === mediaModalContent) {
+    modalFullscreenBtn.textContent = "Exit Fullscreen";
+  } else {
+    modalFullscreenBtn.textContent = "Fullscreen";
+  }
+}
+
+async function downloadEntry(entry) {
+  try {
+    const response = await fetch(entry.downloadURL);
+    if (!response.ok) {
+      throw new Error("Download failed.");
+    }
+    const blob = await response.blob();
+    const fallbackExt = entry.mediaType === "audio" ? "webm" : "webm";
+    downloadBlob(blob, entry.fileName || `${entry.id}.${fallbackExt}`);
+  } catch (error) {
+    setGalleryStatus(error.message || "Failed to download file.", true);
+  }
+}
+
+async function deleteEntry(entry, button) {
+  const confirmed = window.confirm("Delete this upload permanently?");
+  if (!confirmed) {
+    return;
+  }
+  if (button) {
+    button.disabled = true;
+  }
+  setGalleryStatus("Deleting upload...", false);
+  try {
+    if (entry.storagePath) {
+      await deleteObject(ref(storage, entry.storagePath));
+    }
+    await deleteDoc(doc(db, "greetings", entry.id));
+    if (activeModalEntry?.id === entry.id) {
+      closeMediaModal();
+    }
+    setGalleryStatus("Upload deleted.", false, true);
+  } catch (error) {
+    setGalleryStatus(error.message || "Could not delete upload.", true);
+  } finally {
+    if (button) {
+      button.disabled = false;
+    }
+  }
+}
+
 function renderGallery() {
   const sorted = sortEntries([...entries], sortBy.value);
   galleryList.innerHTML = "";
@@ -138,6 +293,7 @@ function renderGallery() {
 
     const media = entry.mediaType === "audio" ? document.createElement("audio") : document.createElement("video");
     media.controls = true;
+    media.className = "gallery-media";
     if (entry.mediaType !== "audio") {
       media.playsInline = true;
     }
@@ -156,22 +312,21 @@ function renderGallery() {
     const actions = document.createElement("div");
     actions.className = "item-actions";
 
+    const enlargeBtn = document.createElement("button");
+    enlargeBtn.type = "button";
+    enlargeBtn.className = "btn btn-secondary";
+    enlargeBtn.textContent = "Enlarge";
+    enlargeBtn.addEventListener("click", () => {
+      openMediaModal(entry);
+    });
+    actions.appendChild(enlargeBtn);
+
     const downloadBtn = document.createElement("button");
     downloadBtn.type = "button";
     downloadBtn.className = "btn btn-secondary";
     downloadBtn.textContent = "Download";
-    downloadBtn.addEventListener("click", async () => {
-      try {
-        const response = await fetch(entry.downloadURL);
-        if (!response.ok) {
-          throw new Error("Download failed.");
-        }
-        const blob = await response.blob();
-        const fallbackExt = entry.mediaType === "audio" ? "webm" : "webm";
-        downloadBlob(blob, entry.fileName || `${entry.id}.${fallbackExt}`);
-      } catch (error) {
-        setGalleryStatus(error.message || "Failed to download file.", true);
-      }
+    downloadBtn.addEventListener("click", () => {
+      void downloadEntry(entry);
     });
     actions.appendChild(downloadBtn);
 
@@ -179,24 +334,8 @@ function renderGallery() {
     deleteBtn.type = "button";
     deleteBtn.className = "btn";
     deleteBtn.textContent = "Delete";
-    deleteBtn.addEventListener("click", async () => {
-      const confirmed = window.confirm("Delete this upload permanently?");
-      if (!confirmed) {
-        return;
-      }
-      deleteBtn.disabled = true;
-      setGalleryStatus("Deleting upload...", false);
-      try {
-        if (entry.storagePath) {
-          await deleteObject(ref(storage, entry.storagePath));
-        }
-        await deleteDoc(doc(db, "greetings", entry.id));
-        setGalleryStatus("Upload deleted.", false, true);
-      } catch (error) {
-        setGalleryStatus(error.message || "Could not delete upload.", true);
-      } finally {
-        deleteBtn.disabled = false;
-      }
+    deleteBtn.addEventListener("click", () => {
+      void deleteEntry(entry, deleteBtn);
     });
     actions.appendChild(deleteBtn);
 
@@ -243,6 +382,15 @@ function escapeHtml(text) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function slugify(text) {
+  return String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "guest";
 }
 
 function downloadBlob(blob, fileName) {
