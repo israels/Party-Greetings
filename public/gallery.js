@@ -38,6 +38,17 @@ let entries = [];
 let activeModalEntry = null;
 let activeModalMedia = null;
 
+// WebM files recorded by MediaRecorder often lack duration metadata, causing
+// browsers to report duration=Infinity and pin the seekbar thumb at the far
+// right. Seeking to a very large time forces the browser to scan the file and
+// determine the real duration, then we reset to the beginning.
+function fixInfiniteDuration(media) {
+  if (!isFinite(media.duration)) {
+    media.currentTime = Number.MAX_SAFE_INTEGER;
+    media.addEventListener("timeupdate", () => { media.currentTime = 0; }, { once: true });
+  }
+}
+
 // Wait for config and DOM to load before setting up listeners
 document.addEventListener("DOMContentLoaded", async () => {
   // Wait for config to be available (set by config-loader.js)
@@ -174,6 +185,7 @@ function openMediaModal(entry) {
   media.className = "modal-media";
   media.playsInline = entry.mediaType !== "audio";
   media.src = entry.downloadURL;
+  media.addEventListener("loadedmetadata", () => fixInfiniteDuration(media));
   modalMediaShell.innerHTML = "";
   modalMediaShell.appendChild(media);
   activeModalMedia = media;
@@ -298,6 +310,7 @@ function renderGallery() {
       media.playsInline = true;
     }
     media.src = entry.downloadURL;
+    media.addEventListener("loadedmetadata", () => fixInfiniteDuration(media));
     article.appendChild(media);
 
     const meta = document.createElement("div");
