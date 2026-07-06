@@ -4,7 +4,7 @@ A mobile-friendly web app for guests to record and upload video/audio greetings 
 
 ## Features
 
-- Clear landing instructions and customizable message prompts
+- Creative landing prompt cards above the guest photo, powered by configurable message prompts
 - Video-first recording with audio-only option
 - Front camera default + flip camera button
 - Retake + preview before upload
@@ -77,9 +77,10 @@ You'll need:
      guestName: "Guest of Honor",  // Change to guest name
      eventDescription: "Record a short encouragement or memory for our guest of honor.",
      messagePrompts: [
-       "Share your favorite memory.",
-       "Offer one encouraging word for their future.",
-       "Say one thing you admire about who they are becoming."
+       "Share a favorite memory or special moment with Daniella",
+       "Offer a blessing or short prayer for her life and faith journey",
+       "Share a meaningful Bible verse and why it fits her or this milestone",
+       "Tell her one thing you admire about her or how proud you are of the young woman she is becoming"
      ],
      eventTimeZone: "America/Los_Angeles",  // Used for filename local timestamps
      galleryPassword: "MySecurePassword123",  // Change to strong password!
@@ -282,11 +283,14 @@ galleryPassword: "YourStrongPassword",
 Edit `config.js`:
 ```javascript
 messagePrompts: [
-  "Your custom prompt 1",
-  "Your custom prompt 2",
-  "Your custom prompt 3"
+  "Share a favorite memory or special moment",
+  "Offer a blessing or short prayer",
+  "Share a meaningful Bible verse and why it fits",
+  "Tell one thing you admire"
 ],
 ```
+
+These prompts render as inspiration cards near the top of the landing page, before the guest photo.
 
 ### Change Recording Limit
 

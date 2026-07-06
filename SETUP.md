@@ -52,15 +52,18 @@ In your Firebase Console:
      guestName: "Guest's Name",
      eventDescription: "Custom event description",
      messagePrompts: [
-       "Prompt 1",
-       "Prompt 2",
-       "Prompt 3"
+       "Share a favorite memory or special moment with Daniella",
+       "Offer a blessing or short prayer for her life and faith journey",
+       "Share a meaningful Bible verse and why it fits her or this milestone",
+       "Tell her one thing you admire about her or how proud you are of the young woman she is becoming"
      ],
      eventTimeZone: "America/Los_Angeles",
      galleryPassword: "StrongPassword123",
      firestoreCollection: "greetings"
    };
    ```
+
+`messagePrompts` are shown on the landing page as idea cards above the guest photo.
 
 ## 4. Initialize Firebase
 
