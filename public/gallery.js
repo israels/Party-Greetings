@@ -7,7 +7,7 @@ import {
   orderBy,
   query
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-import { deleteObject, ref } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+import { deleteObject, getDownloadURL, ref } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
 
 // Gallery password is loaded from config.js via window.appConfig
 // (set by config-loader.js)
@@ -374,7 +374,13 @@ function openMediaModal(entry, options = {}) {
     <div><strong>Recorded</strong> ${formatDate(entry.createdAtMs)}</div>
     <div><strong>Type</strong> ${entry.mediaType === "audio" ? "Audio" : "Video"}</div>
     <div><strong>Duration</strong> ${Math.max(1, Math.round(entry.durationSeconds || 0))}s</div>
+    <div><strong>MP4 Download</strong> ${getDownloadStatusText(entry)}</div>
   `;
+
+  const mp4Ready = canDownloadMp4(entry);
+  modalDownloadBtn.classList.toggle("hidden", !mp4Ready);
+  modalDownloadBtn.disabled = !mp4Ready;
+
   modalFullscreenBtn.textContent = "Close Preview";
   mediaModal.classList.remove("hidden");
   document.body.classList.add("modal-open");
@@ -416,14 +422,20 @@ function cleanupActiveModalMedia() {
 }
 
 async function downloadEntry(entry) {
+  if (!canDownloadMp4(entry)) {
+    setGalleryStatus("MP4 is still processing. Download will appear when ready.", true);
+    return;
+  }
+
   try {
-    const response = await fetch(entry.downloadURL);
+    const mp4DownloadUrl = entry.mp4DownloadURL || await getDownloadURL(ref(storage, entry.mp4StoragePath));
+    const response = await fetch(mp4DownloadUrl);
     if (!response.ok) {
       throw new Error("Download failed.");
     }
     const blob = await response.blob();
-    const fallbackExt = entry.mediaType === "audio" ? "webm" : "webm";
-    downloadBlob(blob, entry.fileName || `${entry.id}.${fallbackExt}`);
+    const fileName = entry.mp4FileName || forceMp4FileName(entry.fileName, entry.id);
+    downloadBlob(blob, fileName);
   } catch (error) {
     setGalleryStatus(error.message || "Failed to download file.", true);
   }
@@ -441,6 +453,9 @@ async function deleteEntry(entry, button) {
   try {
     if (entry.storagePath) {
       await deleteObject(ref(storage, entry.storagePath));
+    }
+    if (entry.mp4StoragePath) {
+      await deleteObject(ref(storage, entry.mp4StoragePath)).catch(() => {});
     }
     await deleteDoc(doc(db, "greetings", entry.id));
     if (activeModalEntry?.id === entry.id) {
@@ -501,13 +516,15 @@ function renderGallery() {
     actions.appendChild(enlargeBtn);
 
     const downloadBtn = document.createElement("button");
-    downloadBtn.type = "button";
-    downloadBtn.className = "btn btn-secondary";
-    downloadBtn.textContent = "Download";
-    downloadBtn.addEventListener("click", () => {
-      void downloadEntry(entry);
-    });
-    actions.appendChild(downloadBtn);
+    if (canDownloadMp4(entry)) {
+      downloadBtn.type = "button";
+      downloadBtn.className = "btn btn-secondary";
+      downloadBtn.textContent = "Download MP4";
+      downloadBtn.addEventListener("click", () => {
+        void downloadEntry(entry);
+      });
+      actions.appendChild(downloadBtn);
+    }
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -678,6 +695,28 @@ function escapeHtml(text) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function canDownloadMp4(entry) {
+  return entry?.conversionStatus === "completed" && Boolean(entry?.mp4StoragePath);
+}
+
+function getDownloadStatusText(entry) {
+  if (canDownloadMp4(entry)) {
+    return "Ready";
+  }
+  if (entry?.conversionStatus === "failed") {
+    return "Unavailable (conversion failed)";
+  }
+  if (entry?.conversionStatus === "processing" || entry?.conversionStatus === "queued") {
+    return "Preparing";
+  }
+  return "Unavailable";
+}
+
+function forceMp4FileName(fileName, fallbackId) {
+  const base = String(fileName || fallbackId || "download").replace(/\.[^.]+$/, "");
+  return `${base}.mp4`;
 }
 
 function slugify(text) {

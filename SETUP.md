@@ -72,6 +72,7 @@ When prompted:
 - ✅ Select: **Firestore Database**
 - ✅ Select: **Storage**
 - ✅ Select: **Hosting**
+- ✅ Select: **Functions**
 - Public directory: `public`
 - Single-page app: `Yes`
 - GitHub CI/CD: `No`
@@ -98,7 +99,25 @@ To allow the gallery to download media files from Firebase Storage, configure CO
 
 If you prefer the CLI later, the same change can be applied from Google Cloud Shell with `gsutil`, but the browser flow works without installing that tool locally.
 
-## 6. Deploy
+## 6. Enable MP4 Conversion Trigger Permissions (Console UI)
+
+Cloud Functions v2 storage triggers require Eventarc to validate bucket metadata.
+
+1. In Firebase Console, ensure these services are enabled:
+  - **Cloud Functions**
+  - **Cloud Build**
+  - **Artifact Registry**
+  - **Eventarc**
+2. Find your project number in Firebase Project Settings.
+3. In Google Cloud Console -> **IAM & Admin** -> **IAM**, grant this principal:
+  - `service-PROJECT_NUMBER@gcp-sa-eventarc.iam.gserviceaccount.com`
+4. Role to grant:
+  - **Cloud Storage -> Storage Legacy Bucket Reader**
+5. In Cloud Storage -> Buckets -> your default bucket -> **Permissions**, grant the same principal and role at bucket level.
+
+If missing, function deploy may fail with `storage.buckets.get denied` while creating the trigger.
+
+## 7. Deploy
 
 ```bash
 firebase deploy
@@ -175,6 +194,10 @@ public/
 **Camera/mic not working** → HTTPS required (Firebase Hosting provides this)
 
 **Upload fails** → Check Firestore/Storage rules allow writes (test mode = all writes allowed)
+
+**Function deploy fails with `storage.buckets.get denied`** → Complete section 6 IAM steps, then run `firebase deploy --only functions`
+
+**No MP4 output appears** → Check function `convertWebmToMp4` invocation logs and Firestore fields (`conversionStatus`, `mp4DownloadURL`)
 
 ## See Also
 

@@ -15,8 +15,8 @@ A mobile-friendly web app for guests to record and upload video/audio blessings 
 - "Record another blessing" flow for multiple submissions
 - Family gallery with password protection
 - Sort gallery by name or upload date
-- Download single upload
-- Download all uploads as `.zip`
+- Automatic background WebM -> MP4 conversion for mobile-friendly downloads
+- Download MP4 only when conversion is complete
 - Delete upload from gallery (Firestore record + Storage file)
 
 ## Before You Start
@@ -102,6 +102,7 @@ When prompted by `firebase init`, select:
   - ✅ Firestore Database
   - ✅ Storage (emulator optional)
   - ✅ Hosting
+  - ✅ Functions
 
 - **What file should be used as your Firestore indexes?**
   - Accept default: `firestore.indexes.json`
@@ -121,7 +122,26 @@ When prompted by `firebase init`, select:
 - **Set up automatic builds and deploys with GitHub?**
   - Select: `No` (unless you want CI/CD)
 
-### 4. Firestore Collection Setup (One-Time)
+### 4. Enable MP4 Conversion (Manual Firebase Console Steps)
+
+The gallery keeps playback on original WebM, but download buttons appear only after MP4 conversion completes.
+
+1. Confirm the default storage bucket name from your web config (`storageBucket`) in `public/firebase-config.js`.
+2. In Firebase Console, enable:
+  - **Cloud Functions**
+  - **Cloud Build**
+  - **Artifact Registry**
+  - **Eventarc**
+3. In Google Cloud Console, open **IAM & Admin** -> **IAM**.
+4. Grant this principal bucket read permissions (replace project number):
+  - `service-PROJECT_NUMBER@gcp-sa-eventarc.iam.gserviceaccount.com`
+5. Grant role:
+  - **Cloud Storage -> Storage Legacy Bucket Reader**
+6. In Cloud Storage -> Buckets -> `<your storage bucket>` -> **Permissions**, grant the same role to the same principal at bucket level.
+
+Without this IAM step, function deploy may fail with `storage.buckets.get denied` during trigger validation.
+
+### 5. Firestore Collection Setup (One-Time)
 
 The app writes to a `greetings` Firestore collection with fields:
 - `guestName`
@@ -130,13 +150,17 @@ The app writes to a `greetings` Firestore collection with fields:
 - `fileName`
 - `storagePath`
 - `downloadURL`
+- `conversionStatus` (`queued`, `processing`, `completed`, `failed`)
+- `mp4StoragePath`
+- `mp4FileName`
+- `mp4DownloadURL`
 - `durationSeconds`
 - `createdAtMs`
 - `createdAt` (server timestamp)
 
 The collection is auto-created on first upload, but you can pre-create it in Firebase Console if preferred.
 
-### 5. Deploy to Firebase Hosting
+### 6. Deploy to Firebase Hosting
 
 ```bash
 firebase deploy
@@ -204,7 +228,7 @@ README.md                      # This file
 
 ### Download All Files
 
-Use the family gallery to download individual media files via the modal download button (bulk ZIP download is not available due to file size limitations).
+Use the family gallery to download individual media files via the modal download button. Download controls are hidden until MP4 conversion is complete.
 
 ### Optional: Export from Cloud Storage
 
@@ -312,6 +336,19 @@ Fallback option:
 - Check Firebase Storage is enabled in your project
 - Verify Firestore rules allow writes (test mode allows all)
 - Check Storage rules (`storage.rules`) permit uploads
+
+**Function deploy fails with `storage.buckets.get denied`**
+- Grant Eventarc service account bucket metadata read access (see Setup step 4)
+- Retry deploy: `firebase deploy --only functions`
+
+**No MP4 generated after upload**
+- Check function `convertWebmToMp4` has invocations in Firebase Console
+- In Firestore, confirm `conversionStatus` transitions to `completed`
+- Confirm MP4 object exists next to the original in Storage
+
+**MP4 download button never appears**
+- Ensure Firestore doc includes `mp4DownloadURL` and `conversionStatus: completed`
+- Upload a new file after latest function deploy (older converted files may need backfill)
 
 ---
 
