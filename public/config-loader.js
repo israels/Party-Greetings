@@ -35,21 +35,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const guestMessageLabelEl = document.getElementById("guestMessageLabel");
 
   if (titleEl) {
-    titleEl.textContent = `Leave a Blessing for ${globalConfig.guestName} 🎉`;
+    titleEl.textContent = `Leave a Message for ${globalConfig.guestName} 🎉`;
   }
 
   if (descEl && globalConfig.eventDescription) {
     descEl.textContent = globalConfig.eventDescription;
   }
 
-  if (promptListEl && globalConfig.blessingPrompts) {
-    promptListEl.innerHTML = globalConfig.blessingPrompts
+  if (promptListEl && globalConfig.messagePrompts) {
+    promptListEl.innerHTML = globalConfig.messagePrompts
       .map((prompt) => `<li>${escapeHtml(prompt)}</li>`)
       .join("");
   }
 
   if (galleryTitleEl) {
-    galleryTitleEl.textContent = `${globalConfig.guestName}'s Blessings Gallery`;
+    galleryTitleEl.textContent = `${globalConfig.guestName}'s Greetings Gallery`;
   }
 
   if (guestMessageLabelEl) {

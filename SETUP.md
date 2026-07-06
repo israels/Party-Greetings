@@ -51,11 +51,12 @@ In your Firebase Console:
    export const config = {
      guestName: "Guest's Name",
      eventDescription: "Custom event description",
-     blessingPrompts: [
+     messagePrompts: [
        "Prompt 1",
        "Prompt 2",
        "Prompt 3"
      ],
+     eventTimeZone: "America/Los_Angeles",
      galleryPassword: "StrongPassword123",
      firestoreCollection: "greetings"
    };

@@ -4,6 +4,8 @@ import { getDownloadURL, ref, uploadBytesResumable } from "https://www.gstatic.c
 
 const MAX_SECONDS = 90;
 const WARNING_SECONDS = 15;
+const DEFAULT_EVENT_TIME_ZONE = "America/Los_Angeles";
+const EVENT_TIME_ZONE = resolveEventTimeZone();
 
 const enableMediaBtn = document.getElementById("enableMediaBtn");
 const flipCameraBtn = document.getElementById("flipCameraBtn");
@@ -129,7 +131,7 @@ recordAnotherBtn.addEventListener("click", async () => {
 uploadForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!recordedBlob) {
-    setStatus("Please record a blessing first.", true);
+    setStatus("Please record a message first.", true);
     return;
   }
   if (!ensureFirebaseReady()) {
@@ -140,16 +142,18 @@ uploadForm.addEventListener("submit", async (event) => {
   const guestMessage = guestMessageInput.value.trim();
   const mediaType = recordedMediaType || mode;
   const ext = getExtension(recordedBlob.type, mediaType);
-  const timestamp = Date.now();
-  const safeGuest = slugify(guestName);
-  const fileName = `${timestamp}_${safeGuest}.${ext}`;
-  const storagePath = `greetings/${new Date().getFullYear()}/${fileName}`;
+  const uploadedAtMs = Date.now();
+  const eventDateParts = getEventLocalDateParts(uploadedAtMs, EVENT_TIME_ZONE);
+  const safeGuest = slugifyForFile(guestName);
+  const randomSuffix = createRandomToken(6);
+  const fileName = `${eventDateParts.date}_${eventDateParts.time}_${safeGuest}_${randomSuffix}.${ext}`;
+  const storagePath = `greetings/${eventDateParts.year}/${fileName}`;
 
   progressWrap.classList.remove("hidden");
   uploadProgress.value = 0;
   uploadProgressText.textContent = "0%";
   uploadBtn.disabled = true;
-  setStatus("Uploading your blessing...", false);
+  setStatus("Uploading your message...", false);
 
   const mediaRef = ref(storage, storagePath);
   const uploadTask = uploadBytesResumable(mediaRef, recordedBlob, {
@@ -179,17 +183,17 @@ uploadForm.addEventListener("submit", async (event) => {
         storagePath,
         downloadURL,
         conversionStatus: "queued",
-        conversionRequestedAt: Date.now(),
+        conversionRequestedAt: uploadedAtMs,
         conversionAttempts: 0,
         mp4StoragePath: null,
         mp4FileName: null,
         conversionError: null,
         sizeBytes: recordedBlob.size,
         durationSeconds: recordedDurationSeconds,
-        createdAtMs: Date.now(),
+        createdAtMs: uploadedAtMs,
         createdAt: serverTimestamp()
       });
-      setStatus("Upload complete. Your blessing has been saved.", false, true);
+      setStatus("Upload complete. Your message has been saved.", false, true);
       thankYou.classList.remove("hidden");
       recordAnotherBtn.classList.remove("hidden");
       uploadProgress.value = 100;
@@ -258,7 +262,7 @@ async function retakeAndPrep() {
   resetPlaybackElements();
   await setupStream();
   renderIdleTimer();
-  setStatus("You can record another blessing now.", false);
+  setStatus("You can record another message now.", false);
 }
 
 async function setupStream() {
@@ -317,7 +321,7 @@ function startRecording() {
     renderPlayback(recordedBlob, recordedMediaType);
     reviewReady = true;
     uploadBtn.disabled = false;
-    setStatus("Review your blessing, then continue to upload or retake.", false);
+    setStatus("Review your message, then continue to upload or retake.", false);
     goToStep(2, { force: true });
   };
 
@@ -508,13 +512,80 @@ function formatSeconds(totalSeconds) {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-function slugify(text) {
+function slugifyForFile(text) {
   return text
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
     .slice(0, 40) || "guest";
+}
+
+function createRandomToken(length = 6) {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const tokenChars = [];
+  if (window.crypto?.getRandomValues) {
+    const values = new Uint8Array(length);
+    window.crypto.getRandomValues(values);
+    for (const value of values) {
+      tokenChars.push(alphabet[value % alphabet.length]);
+    }
+    return tokenChars.join("");
+  }
+  for (let index = 0; index < length; index += 1) {
+    tokenChars.push(alphabet[Math.floor(Math.random() * alphabet.length)]);
+  }
+  return tokenChars.join("");
+}
+
+function getEventLocalDateParts(timestampMs, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    hourCycle: "h23"
+  });
+  const mapped = Object.fromEntries(
+    formatter
+      .formatToParts(new Date(timestampMs))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  return {
+    year: mapped.year,
+    date: `${mapped.year}${mapped.month}${mapped.day}`,
+    time: `${mapped.hour}${mapped.minute}${mapped.second}`
+  };
+}
+
+function resolveEventTimeZone() {
+  const configuredTimeZone = window.appConfig?.eventTimeZone;
+  if (isValidTimeZone(configuredTimeZone)) {
+    return configuredTimeZone;
+  }
+  if (configuredTimeZone) {
+    console.warn(
+      `Invalid eventTimeZone \"${configuredTimeZone}\". Falling back to ${DEFAULT_EVENT_TIME_ZONE}.`
+    );
+  }
+  return DEFAULT_EVENT_TIME_ZONE;
+}
+
+function isValidTimeZone(timeZone) {
+  if (typeof timeZone !== "string" || !timeZone.trim()) {
+    return false;
+  }
+  try {
+    Intl.DateTimeFormat("en-US", { timeZone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getExtension(mimeType, mediaType) {
