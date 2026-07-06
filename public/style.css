@@ -593,9 +593,13 @@ progress::-moz-progress-bar {
 
 .controls-row {
   display: grid;
-  grid-template-columns: 110px 1fr auto;
+  grid-template-columns: 92px minmax(140px, 1fr) 96px minmax(140px, 1fr) auto;
   align-items: end;
   gap: 10px;
+}
+
+.controls-row > label {
+  margin: 0;
 }
 
 .gallery-grid {
@@ -742,6 +746,35 @@ progress::-moz-progress-bar {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
+}
+
+.modal-sequence-controls {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid rgba(168, 85, 247, 0.2);
+  border-radius: 14px;
+  background: rgba(237, 233, 254, 0.5);
+}
+
+.modal-sequence-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.modal-sequence-btn {
+  min-height: 44px;
+}
+
+.modal-sequence-progress {
+  font-size: 0.9rem;
+  color: var(--purple-deep);
+  font-weight: 700;
+}
+
+.modal-autoplay-continue {
+  width: 100%;
 }
 
 body.modal-open {
@@ -891,6 +924,7 @@ body.modal-open {
 
   .controls-row {
     grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .gallery-grid {
@@ -916,5 +950,13 @@ body.modal-open {
 
   .modal-actions-row .btn {
     flex: 1;
+  }
+
+  .modal-sequence-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-sequence-btn {
+    min-height: 50px;
   }
 }
