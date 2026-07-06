@@ -27,10 +27,12 @@ try {
 window.appConfig = globalConfig;
 
 // Update page titles and labels with config values
-document.addEventListener("DOMContentLoaded", () => {
+function applyConfigToDom() {
   const titleEl = document.getElementById("mainTitle");
   const descEl = document.getElementById("mainDescription");
+  const promptPanelEl = document.querySelector(".prompt-panel");
   const promptListEl = document.getElementById("promptList");
+  const guestPhotoCaptionEl = document.getElementById("guestPhotoCaption");
   const galleryTitleEl = document.getElementById("galleryTitle");
   const guestMessageLabelEl = document.getElementById("guestMessageLabel");
 
@@ -42,10 +44,20 @@ document.addEventListener("DOMContentLoaded", () => {
     descEl.textContent = globalConfig.eventDescription;
   }
 
-  if (promptListEl && globalConfig.messagePrompts) {
-    promptListEl.innerHTML = globalConfig.messagePrompts
+  const prompts = Array.isArray(globalConfig.messagePrompts)
+    ? globalConfig.messagePrompts.filter((prompt) => typeof prompt === "string" && prompt.trim())
+    : [];
+
+  if (promptListEl && prompts.length > 0) {
+    promptListEl.innerHTML = prompts
       .map((prompt) => `<li>${escapeHtml(prompt)}</li>`)
       .join("");
+  } else if (promptPanelEl) {
+    promptPanelEl.classList.add("hidden");
+  }
+
+  if (guestPhotoCaptionEl) {
+    guestPhotoCaptionEl.textContent = globalConfig.guestName || "Guest of Honor";
   }
 
   if (galleryTitleEl) {
@@ -55,7 +67,13 @@ document.addEventListener("DOMContentLoaded", () => {
   if (guestMessageLabelEl) {
     guestMessageLabelEl.textContent = `A note for ${globalConfig.guestName} (optional)`;
   }
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", applyConfigToDom, { once: true });
+} else {
+  applyConfigToDom();
+}
 
 function escapeHtml(text) {
   const map = {

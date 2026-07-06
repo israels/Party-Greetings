@@ -22,9 +22,10 @@ export const config = {
   
   // Message prompts shown to guests
   messagePrompts: [
-    "Share your favorite memory with our guest of honor.",
-    "Offer one encouraging word for their future.",
-    "Say one thing you admire about who they are becoming."
+    "Share a favorite memory or special moment with Daniella",
+    "Offer a blessing or short prayer for her life and faith journey",
+    "Share a meaningful Bible verse and why it fits her or this milestone",
+    "Tell her one thing you admire about her or how proud you are of the young woman she is becoming"
   ],
 
   // Event timezone used for local timestamp formatting in upload filenames

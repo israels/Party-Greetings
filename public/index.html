@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Fredoka+One&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./style.css?v=20260706a" />
   </head>
   <body>
     <main class="page workflow-page">
@@ -45,6 +45,11 @@
             <p class="lead" id="mainDescription">
               Leave a short video note for the guest of honor. Your message will become part of a joyful keepsake.
             </p>
+            <section class="prompt-panel" aria-label="Message inspiration">
+              <p class="prompt-panel-kicker">Need inspiration?</p>
+              <p class="prompt-panel-lead">Pick one of these ideas when recording:</p>
+              <ul class="prompt-list" id="promptList"></ul>
+            </section>
             <figure class="guest-photo-frame" aria-label="Guest of honor photo placeholder">
               <img
                 id="guestOfHonorPhoto"
@@ -53,9 +58,8 @@
                 alt="Guest of honor portrait"
                 onerror="this.style.display='none'; this.parentElement.classList.add('is-empty');"
               />
-              <figcaption class="guest-photo-caption">Guest of Honor</figcaption>
+              <figcaption id="guestPhotoCaption" class="guest-photo-caption">Guest of Honor</figcaption>
             </figure>
-            <ul class="prompt-list" id="promptList"></ul>
             <div class="actions actions-centered">
               <button id="introNextBtn" class="btn btn-gold">Begin</button>
             </div>
@@ -155,8 +159,8 @@
       </section>
     </main>
 
-    <script type="module" src="./firebase-config.js"></script>
-    <script type="module" src="./config-loader.js"></script>
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="./firebase-config.js?v=20260706a"></script>
+    <script type="module" src="./config-loader.js?v=20260706a"></script>
+    <script type="module" src="./app.js?v=20260706a"></script>
   </body>
 </html>
