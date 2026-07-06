@@ -25,7 +25,6 @@ const sortBy = document.getElementById("sortBy");
 const playAllVideosBtn = document.getElementById("playAllVideosBtn");
 const stopPlayAllBtn = document.getElementById("stopPlayAllBtn");
 const mediaModal = document.getElementById("mediaModal");
-const mediaModalContent = document.getElementById("mediaModalContent");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
 const modalTitle = document.getElementById("modalTitle");
 const modalSubtitle = document.getElementById("modalSubtitle");
@@ -99,7 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   stopPlayAllBtn.addEventListener("click", stopPlayAll);
 
   modalCloseBtn.addEventListener("click", () => closeMediaModal());
-  modalFullscreenBtn.addEventListener("click", toggleModalFullscreen);
+  modalFullscreenBtn.addEventListener("click", () => closeMediaModal());
   modalDownloadBtn.addEventListener("click", () => {
     if (!activeModalEntry) {
       return;
@@ -122,7 +121,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       closeMediaModal();
     }
   });
-  document.addEventListener("fullscreenchange", handleModalFullscreenChange);
 });
 
 function initGalleryFeed() {
@@ -235,7 +233,7 @@ function openMediaModal(entry, isPlayAll = false) {
     <div><strong>Recorded</strong> ${formatDate(entry.createdAtMs)}</div>
     <div><strong>Duration</strong> ${Math.max(1, Math.round(entry.durationSeconds || 0))}s</div>
   `;
-  modalFullscreenBtn.textContent = "Fullscreen";
+  modalFullscreenBtn.textContent = "Close Preview";
   mediaModal.classList.remove("hidden");
   document.body.classList.add("modal-open");
 }
@@ -255,36 +253,10 @@ function closeMediaModal() {
   modalTitle.textContent = "Preview";
   modalSubtitle.textContent = "";
   modalMetaText.innerHTML = "";
-  modalFullscreenBtn.textContent = "Fullscreen";
+  modalFullscreenBtn.textContent = "Close Preview";
 
   if (document.fullscreenElement && document.exitFullscreen) {
     void document.exitFullscreen().catch(() => {});
-  }
-}
-
-async function toggleModalFullscreen() {
-  if (!mediaModalContent) {
-    return;
-  }
-
-  if (!document.fullscreenElement) {
-    try {
-      await mediaModalContent.requestFullscreen();
-      modalFullscreenBtn.textContent = "Exit Fullscreen";
-    } catch (error) {
-      setGalleryStatus("Fullscreen is unavailable in this browser.", true);
-    }
-  } else if (document.exitFullscreen) {
-    await document.exitFullscreen();
-    modalFullscreenBtn.textContent = "Fullscreen";
-  }
-}
-
-function handleModalFullscreenChange() {
-  if (document.fullscreenElement === mediaModalContent) {
-    modalFullscreenBtn.textContent = "Exit Fullscreen";
-  } else {
-    modalFullscreenBtn.textContent = "Fullscreen";
   }
 }
 
