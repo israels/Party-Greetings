@@ -22,8 +22,8 @@ const passwordStatus = document.getElementById("passwordStatus");
 const galleryStatus = document.getElementById("galleryStatus");
 const galleryList = document.getElementById("galleryList");
 const sortBy = document.getElementById("sortBy");
+const sequenceScope = document.getElementById("sequenceScope");
 const playAllVideosBtn = document.getElementById("playAllVideosBtn");
-const stopPlayAllBtn = document.getElementById("stopPlayAllBtn");
 const mediaModal = document.getElementById("mediaModal");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
 const modalTitle = document.getElementById("modalTitle");
@@ -33,15 +33,25 @@ const modalMediaShell = document.getElementById("modalMediaShell");
 const modalFullscreenBtn = document.getElementById("modalFullscreenBtn");
 const modalDownloadBtn = document.getElementById("modalDownloadBtn");
 const modalDeleteBtn = document.getElementById("modalDeleteBtn");
+const modalSequenceControls = document.getElementById("modalSequenceControls");
+const modalPrevBtn = document.getElementById("modalPrevBtn");
+const modalPauseBtn = document.getElementById("modalPauseBtn");
+const modalNextBtn = document.getElementById("modalNextBtn");
+const modalSequenceProgress = document.getElementById("modalSequenceProgress");
+const modalAutoplayContinueBtn = document.getElementById("modalAutoplayContinueBtn");
+
+const AUTOPLAY_PREF_KEY = "gallerySequentialAutoplay";
 
 let entries = [];
 let activeModalEntry = null;
 let activeModalMedia = null;
 
-// Play All state
-let isPlayingAll = false;
-let playAllQueue = [];
-let playAllCurrentIndex = 0;
+// Sequential state
+let isSequentialMode = false;
+let sequentialQueue = [];
+let sequentialCurrentIndex = -1;
+let shouldAutoAdvance = false;
+let lastAutoplayBlocked = false;
 
 // WebM files recorded by MediaRecorder often lack duration metadata, causing
 // browsers to report duration=Infinity and pin the seekbar thumb at the far
@@ -91,14 +101,45 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   sortBy.addEventListener("change", () => {
+    handleSortOrScopeChange();
     renderGallery();
   });
 
-  if (playAllVideosBtn) {
-    playAllVideosBtn.addEventListener("click", startPlayAll);
+  if (sequenceScope) {
+    sequenceScope.addEventListener("change", () => {
+      handleSortOrScopeChange();
+    });
   }
-  if (stopPlayAllBtn) {
-    stopPlayAllBtn.addEventListener("click", stopPlayAll);
+
+  if (playAllVideosBtn) {
+    playAllVideosBtn.addEventListener("click", () => {
+      void startSequentialPlayback();
+    });
+  }
+  updatePlaySequenceButton();
+
+  if (modalPrevBtn) {
+    modalPrevBtn.addEventListener("click", () => {
+      void goToPreviousSequentialEntry();
+    });
+  }
+
+  if (modalNextBtn) {
+    modalNextBtn.addEventListener("click", () => {
+      void goToNextSequentialEntry();
+    });
+  }
+
+  if (modalPauseBtn) {
+    modalPauseBtn.addEventListener("click", () => {
+      void toggleSequentialPause();
+    });
+  }
+
+  if (modalAutoplayContinueBtn) {
+    modalAutoplayContinueBtn.addEventListener("click", () => {
+      void continueAfterAutoplayBlock();
+    });
   }
 
   modalCloseBtn.addEventListener("click", () => closeMediaModal());
@@ -121,8 +162,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
   document.addEventListener("keydown", (event) => {
-    if (!mediaModal.classList.contains("hidden") && event.key === "Escape") {
+    if (mediaModal.classList.contains("hidden")) {
+      return;
+    }
+
+    if (event.key === "Escape") {
       closeMediaModal();
+      return;
+    }
+
+    if (!isSequentialMode) {
+      return;
+    }
+
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      void goToPreviousSequentialEntry();
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      void goToNextSequentialEntry();
+      return;
+    }
+
+    if (event.key === " " || event.code === "Space") {
+      event.preventDefault();
+      void toggleSequentialPause();
     }
   });
 });
@@ -134,7 +201,10 @@ function initGalleryFeed() {
     q,
     (snapshot) => {
       entries = snapshot.docs.map((snap) => ({ id: snap.id, ...snap.data() }));
-      renderGallery();
+      if (isSequentialMode) {
+        refreshSequentialQueue(activeModalEntry?.id || null);
+      }
+    renderGallery();
       setGalleryStatus(`Loaded ${entries.length} blessing${entries.length === 1 ? "" : "s"}.`, false);
     },
     (error) => {
@@ -143,75 +213,136 @@ function initGalleryFeed() {
   );
 }
 
-function startPlayAll() {
-  // Filter videos only and sort oldest first
-  const videos = entries
-    .filter(entry => entry.mediaType === "video")
-    .sort((a, b) => Number(a.createdAtMs || 0) - Number(b.createdAtMs || 0));
+async function startSequentialPlayback(startEntryId = null) {
+  refreshSequentialQueue(startEntryId);
 
-  if (!videos.length) {
-    setGalleryStatus("No videos available to play.", true);
+  if (!sequentialQueue.length) {
+    setGalleryStatus("No media available for the selected sequential scope.", true);
     return;
   }
 
-  isPlayingAll = true;
-  playAllQueue = videos;
-  playAllCurrentIndex = 0;
-
-  if (playAllVideosBtn) {
-    playAllVideosBtn.disabled = true;
-  }
-  if (stopPlayAllBtn) {
-    stopPlayAllBtn.disabled = false;
+  const autoplayPref = getAutoplayPreference();
+  if (!autoplayPref) {
+    const wantsAutoplay = window.confirm(
+      "Enable continuous autoplay in sequential mode?\n\nSelect OK for autoplay, or Cancel to manually start each next item."
+    );
+    setAutoplayPreference(wantsAutoplay ? "always" : "manual");
   }
 
-  setGalleryStatus(`Playing all videos (oldest first). ${videos.length} video${videos.length === 1 ? "" : "s"}.`, false);
+  isSequentialMode = true;
+  shouldAutoAdvance = true;
+  updateSequentialControls();
+  updatePlaySequenceButton();
 
-  // Open modal and play first video
-  openPlayAllModal();
+  const currentScope = getScopeLabel(sequenceScope?.value || "video");
+  setGalleryStatus(`Sequential mode started (${currentScope}).`, false);
+  await openSequentialCurrentEntry(true);
 }
 
-function stopPlayAll() {
-  isPlayingAll = false;
-  playAllQueue = [];
-  playAllCurrentIndex = 0;
+function stopSequentialPlayback(options = {}) {
+  const keepStatus = options.keepStatus === true;
+  isSequentialMode = false;
+  sequentialQueue = [];
+  sequentialCurrentIndex = -1;
+  shouldAutoAdvance = false;
+  lastAutoplayBlocked = false;
+  hideAutoplayContinueButton();
+  updateSequentialControls();
+  updatePlaySequenceButton();
 
-  if (playAllVideosBtn) {
-    playAllVideosBtn.disabled = false;
+  if (!keepStatus) {
+    setGalleryStatus("Sequential mode stopped.", false);
   }
-  if (stopPlayAllBtn) {
-    stopPlayAllBtn.disabled = true;
-  }
-
-  closeMediaModal();
-  setGalleryStatus("Play All stopped.", false);
 }
 
-function openPlayAllModal() {
-  if (playAllCurrentIndex >= playAllQueue.length) {
-    // Reached end of queue
-    setGalleryStatus("Finished playing all videos.", false);
-    stopPlayAll();
+async function openSequentialCurrentEntry(tryAutoplay) {
+  if (!isSequentialMode || sequentialCurrentIndex < 0 || sequentialCurrentIndex >= sequentialQueue.length) {
+    return;
+  }
+  const entry = sequentialQueue[sequentialCurrentIndex];
+  openMediaModal(entry, { sequential: true });
+  if (tryAutoplay && getAutoplayPreference() === "always") {
+    await tryPlayActiveMedia(true);
+  }
+}
+
+async function goToNextSequentialEntry() {
+  if (!isSequentialMode) {
+    return;
+  }
+  if (sequentialCurrentIndex >= sequentialQueue.length - 1) {
+    stopSequentialPlayback({ keepStatus: true });
+    setGalleryStatus("Reached the end of the sequence.", false);
+    return;
+  }
+  sequentialCurrentIndex += 1;
+  await openSequentialCurrentEntry(true);
+}
+
+async function goToPreviousSequentialEntry() {
+  if (!isSequentialMode) {
+    return;
+  }
+  if (sequentialCurrentIndex <= 0) {
+    return;
+  }
+  sequentialCurrentIndex -= 1;
+  await openSequentialCurrentEntry(false);
+}
+
+function refreshSequentialQueue(preferredEntryId = null) {
+  const existingActiveId = preferredEntryId || activeModalEntry?.id || null;
+  sequentialQueue = buildSequentialQueue();
+
+  if (!sequentialQueue.length) {
+    sequentialCurrentIndex = -1;
     return;
   }
 
-  const entry = playAllQueue[playAllCurrentIndex];
-  openMediaModal(entry, true);
+  const foundIndex = existingActiveId
+    ? sequentialQueue.findIndex((entry) => entry.id === existingActiveId)
+    : -1;
+  sequentialCurrentIndex = foundIndex >= 0 ? foundIndex : 0;
 }
 
-function handlePlayAllEnded() {
-  if (isPlayingAll) {
-    playAllCurrentIndex++;
-    openPlayAllModal();
+function buildSequentialQueue() {
+  const sorted = sortEntries([...entries], sortBy.value);
+  const scope = sequenceScope?.value || "video";
+  if (scope === "video") {
+    return sorted.filter((entry) => entry.mediaType === "video");
   }
+  if (scope === "audio") {
+    return sorted.filter((entry) => entry.mediaType === "audio");
+  }
+  return sorted.filter((entry) => entry.mediaType === "video" || entry.mediaType === "audio");
 }
 
-function openMediaModal(entry, isPlayAll = false) {
+function handleSortOrScopeChange() {
+  if (!isSequentialMode) {
+    return;
+  }
+
+  const activeId = activeModalEntry?.id || null;
+  refreshSequentialQueue(activeId);
+
+  if (!sequentialQueue.length) {
+    stopSequentialPlayback({ keepStatus: true });
+    closeMediaModal({ skipSequentialStop: true });
+    setGalleryStatus("Sequence became empty for the selected filters.", true);
+    return;
+  }
+
+  void openSequentialCurrentEntry(false);
+}
+
+function openMediaModal(entry, options = {}) {
   if (!entry) {
     return;
   }
 
-  closeMediaModal();
+  const isSequential = options.sequential === true;
+
+  cleanupActiveModalMedia();
   activeModalEntry = entry;
 
   const media = entry.mediaType === "audio" ? document.createElement("audio") : document.createElement("video");
@@ -221,10 +352,16 @@ function openMediaModal(entry, isPlayAll = false) {
   media.src = entry.downloadURL;
   media.addEventListener("loadedmetadata", () => fixInfiniteDuration(media));
 
-  if (isPlayAll) {
-    media.autoplay = true;
-    media.addEventListener("ended", handlePlayAllEnded);
+  if (isSequential) {
+    media.addEventListener("ended", () => {
+      if (isSequentialMode && shouldAutoAdvance) {
+        void goToNextSequentialEntry();
+      }
+    });
   }
+
+  media.addEventListener("play", updatePauseButtonLabel);
+  media.addEventListener("pause", updatePauseButtonLabel);
 
   modalMediaShell.innerHTML = "";
   modalMediaShell.appendChild(media);
@@ -233,32 +370,21 @@ function openMediaModal(entry, isPlayAll = false) {
   modalTitle.textContent = entry.guestName || "Anonymous";
   modalSubtitle.textContent = entry.guestMessage ? entry.guestMessage : "No note provided.";
 
-  let playAllText = "";
-  if (isPlayAll) {
-    const total = playAllQueue.length;
-    const current = playAllCurrentIndex + 1;
-    playAllText = `<div><strong>Play All</strong> ${current} of ${total}</div>`;
-  }
-
   modalMetaText.innerHTML = `
-    ${playAllText}
     <div><strong>Recorded</strong> ${formatDate(entry.createdAtMs)}</div>
+    <div><strong>Type</strong> ${entry.mediaType === "audio" ? "Audio" : "Video"}</div>
     <div><strong>Duration</strong> ${Math.max(1, Math.round(entry.durationSeconds || 0))}s</div>
   `;
   modalFullscreenBtn.textContent = "Close Preview";
   mediaModal.classList.remove("hidden");
   document.body.classList.add("modal-open");
+  updateSequentialControls();
+  hideAutoplayContinueButton();
+  updatePauseButtonLabel();
 }
 
-function closeMediaModal() {
-  if (activeModalMedia) {
-    activeModalMedia.pause?.();
-    activeModalMedia.removeAttribute("src");
-    activeModalMedia.load?.();
-  }
-
-  modalMediaShell.innerHTML = "";
-  activeModalMedia = null;
+function closeMediaModal(options = {}) {
+  cleanupActiveModalMedia();
   activeModalEntry = null;
   mediaModal.classList.add("hidden");
   document.body.classList.remove("modal-open");
@@ -270,6 +396,23 @@ function closeMediaModal() {
   if (document.fullscreenElement && document.exitFullscreen) {
     void document.exitFullscreen().catch(() => {});
   }
+
+  if (!options.skipSequentialStop && isSequentialMode) {
+    stopSequentialPlayback({ keepStatus: true });
+  }
+}
+
+function cleanupActiveModalMedia() {
+  if (!activeModalMedia) {
+    modalMediaShell.innerHTML = "";
+    return;
+  }
+
+  activeModalMedia.pause?.();
+  activeModalMedia.removeAttribute("src");
+  activeModalMedia.load?.();
+  modalMediaShell.innerHTML = "";
+  activeModalMedia = null;
 }
 
 async function downloadEntry(entry) {
@@ -353,7 +496,7 @@ function renderGallery() {
     enlargeBtn.className = "btn btn-secondary";
     enlargeBtn.textContent = "Enlarge";
     enlargeBtn.addEventListener("click", () => {
-      openMediaModal(entry, false);
+      openMediaModal(entry);
     });
     actions.appendChild(enlargeBtn);
 
@@ -391,6 +534,123 @@ function sortEntries(items, sortValue) {
     return items.sort((a, b) => String(b.guestName || "").localeCompare(String(a.guestName || "")));
   }
   return items.sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
+}
+
+function updateSequentialControls() {
+  const hasQueue = isSequentialMode && sequentialQueue.length > 0;
+  modalSequenceControls.classList.toggle("hidden", !hasQueue);
+
+  if (!hasQueue) {
+    modalSequenceProgress.textContent = "";
+    return;
+  }
+
+  const current = sequentialCurrentIndex + 1;
+  const total = sequentialQueue.length;
+  const scopeText = getScopeLabel(sequenceScope?.value || "video");
+  modalSequenceProgress.textContent = `Item ${current} of ${total} • ${scopeText}`;
+
+  modalPrevBtn.disabled = sequentialCurrentIndex <= 0;
+  modalNextBtn.disabled = sequentialCurrentIndex >= total - 1;
+  updatePauseButtonLabel();
+}
+
+function updatePauseButtonLabel() {
+  if (!modalPauseBtn) {
+    return;
+  }
+  if (!isSequentialMode || !activeModalMedia) {
+    modalPauseBtn.textContent = "Pause";
+    modalPauseBtn.disabled = true;
+    return;
+  }
+
+  modalPauseBtn.disabled = false;
+  modalPauseBtn.textContent = activeModalMedia.paused ? "Resume" : "Pause";
+}
+
+async function toggleSequentialPause() {
+  if (!isSequentialMode || !activeModalMedia) {
+    return;
+  }
+
+  if (activeModalMedia.paused) {
+    await tryPlayActiveMedia(false);
+    return;
+  }
+
+  activeModalMedia.pause();
+  updatePauseButtonLabel();
+}
+
+async function tryPlayActiveMedia(fromAutoplay) {
+  if (!activeModalMedia) {
+    return;
+  }
+
+  try {
+    const maybePromise = activeModalMedia.play();
+    if (maybePromise && typeof maybePromise.then === "function") {
+      await maybePromise;
+    }
+    lastAutoplayBlocked = false;
+    hideAutoplayContinueButton();
+    updatePauseButtonLabel();
+  } catch {
+    if (!fromAutoplay) {
+      return;
+    }
+    lastAutoplayBlocked = true;
+    showAutoplayContinueButton();
+    setGalleryStatus("Autoplay was blocked by your browser. Tap continue in the modal.", true);
+  }
+}
+
+async function continueAfterAutoplayBlock() {
+  if (!lastAutoplayBlocked || !activeModalMedia) {
+    return;
+  }
+  await tryPlayActiveMedia(false);
+}
+
+function showAutoplayContinueButton() {
+  modalAutoplayContinueBtn.classList.remove("hidden");
+}
+
+function hideAutoplayContinueButton() {
+  modalAutoplayContinueBtn.classList.add("hidden");
+}
+
+function getAutoplayPreference() {
+  const value = window.localStorage.getItem(AUTOPLAY_PREF_KEY);
+  if (value === "always" || value === "manual") {
+    return value;
+  }
+  return null;
+}
+
+function setAutoplayPreference(value) {
+  if (value === "always" || value === "manual") {
+    window.localStorage.setItem(AUTOPLAY_PREF_KEY, value);
+  }
+}
+
+function getScopeLabel(scopeValue) {
+  if (scopeValue === "audio") {
+    return "Audio only";
+  }
+  if (scopeValue === "both") {
+    return "Video and audio";
+  }
+  return "Video only";
+}
+
+function updatePlaySequenceButton() {
+  if (!playAllVideosBtn) {
+    return;
+  }
+  playAllVideosBtn.disabled = isSequentialMode;
+  playAllVideosBtn.textContent = isSequentialMode ? "Playing Sequence" : "Play Sequence";
 }
 
 function setGalleryStatus(message, isError, isSuccess = false) {

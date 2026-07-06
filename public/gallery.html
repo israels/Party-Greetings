@@ -40,6 +40,13 @@
             <option value="name-asc">Name (A-Z)</option>
             <option value="name-desc">Name (Z-A)</option>
           </select>
+          <label for="sequenceScope">Sequential:</label>
+          <select id="sequenceScope">
+            <option value="video">Videos only</option>
+            <option value="audio">Audio only</option>
+            <option value="both">Videos and audio</option>
+          </select>
+          <button id="playAllVideosBtn" class="btn btn-gold" type="button">Play Sequence</button>
         </div>
         <p id="galleryStatus" class="status" role="status" aria-live="polite"></p>
         <div id="galleryList" class="gallery-grid"></div>
@@ -65,6 +72,17 @@
               <button id="modalDeleteBtn" class="btn" type="button">Delete</button>
             </div>
           </div>
+            <div id="modalSequenceControls" class="modal-sequence-controls hidden">
+              <div class="modal-sequence-actions">
+                <button id="modalPrevBtn" class="btn btn-secondary modal-sequence-btn" type="button">Previous</button>
+                <button id="modalPauseBtn" class="btn btn-secondary modal-sequence-btn" type="button">Pause</button>
+                <button id="modalNextBtn" class="btn btn-secondary modal-sequence-btn" type="button">Next</button>
+              </div>
+              <div id="modalSequenceProgress" class="modal-sequence-progress"></div>
+            </div>
+            <button id="modalAutoplayContinueBtn" class="btn btn-gold modal-autoplay-continue hidden" type="button">
+              Tap to continue playback
+            </button>
           <div id="modalMetaText" class="modal-meta-text"></div>
         </div>
       </div>
