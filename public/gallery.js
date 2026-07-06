@@ -195,7 +195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function initGalleryFeed() {
-  setGalleryStatus("Loading blessings...", false);
+  setGalleryStatus("Loading greetings...", false);
   const q = query(collection(db, "greetings"), orderBy("createdAtMs", "desc"));
   onSnapshot(
     q,
@@ -205,7 +205,7 @@ function initGalleryFeed() {
         refreshSequentialQueue(activeModalEntry?.id || null);
       }
     renderGallery();
-      setGalleryStatus(`Loaded ${entries.length} blessing${entries.length === 1 ? "" : "s"}.`, false);
+      setGalleryStatus(`Loaded ${entries.length} greeting${entries.length === 1 ? "" : "s"}.`, false);
     },
     (error) => {
       setGalleryStatus(error.message || "Could not load gallery.", true);
@@ -476,7 +476,7 @@ function renderGallery() {
   galleryList.innerHTML = "";
 
   if (!sorted.length) {
-    galleryList.innerHTML = "<p>No blessings uploaded yet.</p>";
+    galleryList.innerHTML = "<p>No greetings uploaded yet.</p>";
     return;
   }
 

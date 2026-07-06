@@ -1,10 +1,10 @@
 # Greetings App 🎉
 
-A mobile-friendly web app for guests to record and upload video/audio blessings for an event, plus a family gallery to view, sort, download, and remove uploads.
+A mobile-friendly web app for guests to record and upload video/audio greetings for an event, plus a family gallery to view, sort, download, and remove uploads.
 
 ## Features
 
-- Clear landing instructions and customizable blessing prompts
+- Clear landing instructions and customizable message prompts
 - Video-first recording with audio-only option
 - Front camera default + flip camera button
 - Retake + preview before upload
@@ -12,7 +12,7 @@ A mobile-friendly web app for guests to record and upload video/audio blessings 
 - Live countdown and near-limit warning
 - Strict 90-second auto-stop (cost-aware default)
 - Realtime upload progress + completion message
-- "Record another blessing" flow for multiple submissions
+- "Record another message" flow for multiple submissions
 - Family gallery with password protection
 - Sort gallery by name or upload date
 - Automatic background WebM -> MP4 conversion for mobile-friendly downloads
@@ -76,11 +76,12 @@ You'll need:
    export const config = {
      guestName: "Guest of Honor",  // Change to guest name
      eventDescription: "Record a short encouragement or memory for our guest of honor.",
-     blessingPrompts: [
+     messagePrompts: [
        "Share your favorite memory.",
-       "Offer one blessing or encouraging word for their future.",
+       "Offer one encouraging word for their future.",
        "Say one thing you admire about who they are becoming."
      ],
+     eventTimeZone: "America/Los_Angeles",  // Used for filename local timestamps
      galleryPassword: "MySecurePassword123",  // Change to strong password!
      firestoreCollection: "greetings"
    };
@@ -157,6 +158,11 @@ The app writes to a `greetings` Firestore collection with fields:
 - `durationSeconds`
 - `createdAtMs`
 - `createdAt` (server timestamp)
+
+Upload filenames now use a sortable local datetime format based on `eventTimeZone`:
+- `YYYYMMDD_HHmmss_guest_name_random.ext`
+- Example upload: `20260706_184512_jane_smith_k9x3v2.webm`
+- MP4 conversion keeps the same base name and swaps extension to `.mp4`
 
 The collection is auto-created on first upload, but you can pre-create it in Firebase Console if preferred.
 
@@ -271,11 +277,11 @@ Edit `config.js`:
 galleryPassword: "YourStrongPassword",
 ```
 
-### Change Blessing Prompts
+### Change Message Prompts
 
 Edit `config.js`:
 ```javascript
-blessingPrompts: [
+messagePrompts: [
   "Your custom prompt 1",
   "Your custom prompt 2",
   "Your custom prompt 3"

@@ -14,18 +14,22 @@ export const config = {
   // EVENT DETAILS
   // ============================================================================
   
-  // Name of the person receiving blessings (used in page titles, prompts, gallery)
+  // Name of the person being celebrated (used in page titles, prompts, gallery)
   guestName: "Guest of Honor",
   
   // Short description of the event (optional, displayed on landing page)
   eventDescription: "Record a short encouragement or memory for our guest of honor.",
   
-  // Blessing prompts shown to guests
-  blessingPrompts: [
+  // Message prompts shown to guests
+  messagePrompts: [
     "Share your favorite memory with our guest of honor.",
-    "Offer one blessing or encouraging word for their future.",
+    "Offer one encouraging word for their future.",
     "Say one thing you admire about who they are becoming."
   ],
+
+  // Event timezone used for local timestamp formatting in upload filenames
+  // Use IANA names like "America/Los_Angeles", "America/New_York", "Europe/London"
+  eventTimeZone: "America/Los_Angeles",
   
   // ============================================================================
   // SECURITY - FAMILY GALLERY ACCESS
