@@ -94,8 +94,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderGallery();
   });
 
-  playAllVideosBtn.addEventListener("click", startPlayAll);
-  stopPlayAllBtn.addEventListener("click", stopPlayAll);
+  if (playAllVideosBtn) {
+    playAllVideosBtn.addEventListener("click", startPlayAll);
+  }
+  if (stopPlayAllBtn) {
+    stopPlayAllBtn.addEventListener("click", stopPlayAll);
+  }
 
   modalCloseBtn.addEventListener("click", () => closeMediaModal());
   modalFullscreenBtn.addEventListener("click", () => closeMediaModal());
@@ -154,8 +158,12 @@ function startPlayAll() {
   playAllQueue = videos;
   playAllCurrentIndex = 0;
 
-  playAllVideosBtn.disabled = true;
-  stopPlayAllBtn.disabled = false;
+  if (playAllVideosBtn) {
+    playAllVideosBtn.disabled = true;
+  }
+  if (stopPlayAllBtn) {
+    stopPlayAllBtn.disabled = false;
+  }
 
   setGalleryStatus(`Playing all videos (oldest first). ${videos.length} video${videos.length === 1 ? "" : "s"}.`, false);
 
@@ -168,8 +176,12 @@ function stopPlayAll() {
   playAllQueue = [];
   playAllCurrentIndex = 0;
 
-  playAllVideosBtn.disabled = false;
-  stopPlayAllBtn.disabled = true;
+  if (playAllVideosBtn) {
+    playAllVideosBtn.disabled = false;
+  }
+  if (stopPlayAllBtn) {
+    stopPlayAllBtn.disabled = true;
+  }
 
   closeMediaModal();
   setGalleryStatus("Play All stopped.", false);
