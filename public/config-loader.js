@@ -48,10 +48,14 @@ function applyConfigToDom() {
     ? globalConfig.messagePrompts.filter((prompt) => typeof prompt === "string" && prompt.trim())
     : [];
 
-  if (promptListEl && prompts.length > 0) {
-    promptListEl.innerHTML = prompts
-      .map((prompt) => `<li>${escapeHtml(prompt)}</li>`)
-      .join("");
+  if (prompts.length > 0) {
+    if (promptListEl) {
+      promptListEl.innerHTML = prompts
+        .map((prompt) => `<li>${escapeHtml(prompt)}</li>`)
+        .join("");
+    } else {
+      console.warn("promptList element not found in DOM — prompts could not be rendered.");
+    }
   } else if (promptPanelEl) {
     promptPanelEl.classList.add("hidden");
   }
