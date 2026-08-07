@@ -595,6 +595,11 @@ progress::-moz-progress-bar {
   display: block;
 }
 
+#liveVideo {
+  transform: scaleX(-1);
+  transform-origin: center;
+}
+
 .camera-overlay {
   position: absolute;
   inset: 0;
