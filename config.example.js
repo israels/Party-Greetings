@@ -18,7 +18,7 @@ export const config = {
   guestName: "Guest of Honor",
   
   // Short description of the event (optional, displayed on landing page)
-  eventDescription: "Record a short encouragement or memory for our guest of honor.",
+  eventDescription: "Record a short message, encouragement, or memory for our guest of honor.",
   
   // Message prompts shown to guests
   messagePrompts: [

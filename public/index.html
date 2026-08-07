@@ -43,7 +43,7 @@
             <p class="eyebrow">Welcome</p>
             <h2 id="mainTitle">Leave a Message 🎉</h2>
             <p class="lead" id="mainDescription">
-              Leave a short video note for the guest of honor. Your message will become part of a joyful keepsake.
+              Leave a short video message for the guest of honor. Your message will become part of a joyful keepsake.
             </p>
             <section class="prompt-panel" aria-label="Message inspiration">
               <p class="prompt-panel-kicker">Need inspiration?</p>
@@ -58,7 +58,7 @@
                 alt="Guest of honor portrait"
                 onerror="this.style.display='none'; this.parentElement.classList.add('is-empty');"
               />
-              <figcaption id="guestPhotoCaption" class="guest-photo-caption">Guest of Honor</figcaption>
+              <figcaption id="guestPhotoCaption" class="guest-photo-caption">Guest of honor</figcaption>
             </figure>
             <div class="actions actions-centered">
               <button id="introNextBtn" class="btn btn-gold">Begin</button>
@@ -69,7 +69,7 @@
             <p class="eyebrow">Step 1 of 2</p>
             <h2>Record your message</h2>
             <p class="notice">
-              <strong>90-second max.</strong> Recording auto-stops at the limit.  You can send multiple messages if desired.
+              <strong>90-second maximum.</strong> Recording stops automatically at the limit. You can send multiple messages if you'd like.
             </p>
             <div class="mode-picker">
               <label><input type="radio" name="mode" value="video" checked /> Video (Preferred)</label>
@@ -113,8 +113,8 @@
 
           <section class="card step-panel hidden" data-step-panel="2">
             <p class="eyebrow">Step 2 of 2</p>
-            <h2>Review your message (optional)</h2>
-            <p class="lead">If needed, review your recording, then continue to upload.</p>
+            <h2>Review your message</h2>
+            <p class="lead">Review your recording, then continue to upload or record again.</p>
             <div class="video-wrap hidden" id="reviewVideoWrap">
               <video id="playbackVideo" controls playsinline class="hidden"></video>
             </div>
@@ -129,7 +129,7 @@
             <p class="eyebrow">Step 3 of 3</p>
             <h2>Upload your message</h2>
             <form id="uploadForm">
-              <label for="guestName">Your name (recommended)</label>
+              <label for="guestName">Your name (optional)</label>
               <input id="guestName" type="text" placeholder="Anonymous" />
               <label for="guestMessage" id="guestMessageLabel">A note (optional)</label>
               <textarea id="guestMessage" placeholder="Add a short note" rows="3"></textarea>
@@ -149,7 +149,7 @@
             <div class="thank-you hidden" id="thankYou">
               <p style="margin: 0">✨ <strong>Thank you!</strong> Your message has been saved.</p>
             </div>
-            <p class="lead">Do you want to record another message?</p>
+            <p class="lead">Want to record another message?</p>
             <div class="actions">
               <button id="recordAnotherBtn" class="btn btn-gold hidden">Start Over</button>
             </div>
